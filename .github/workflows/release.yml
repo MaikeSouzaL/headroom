@@ -1,0 +1,67 @@
+name: Release
+
+# Publica uma versão no GitHub quando uma tag vX.Y.Z é enviada:
+#   git tag v1.0.1
+#   git push origin v1.0.1
+# Roda os testes, gera o Headroom.exe (self-contained, single-file) e o instalador (Inno Setup)
+# e cria o release com os dois arquivos e o SHA-256 de cada um.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Testes
+        run: dotnet test tests/Headroom.Tests/Headroom.Tests.csproj -c Release
+
+      - name: Publicar o executável
+        shell: pwsh
+        run: |
+          $version = '${{ github.ref_name }}'.TrimStart('v')
+          dotnet publish src/Headroom.App/Headroom.App.csproj -c Release -r win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:EnableCompressionInSingleFile=true `
+            -p:DebugType=none `
+            -p:Version=$version `
+            -o artifacts/publish
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          Add-Content -Path $env:GITHUB_ENV -Value "VERSION=$version"
+
+      - name: Gerar o instalador
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup -y --no-progress
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+          }
+          & $iscc "/DPublishDir=$pwd\artifacts\publish" "/DAppVersion=$env:VERSION" "/O$pwd\artifacts\installer" installer\Headroom.iss
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Criar o release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $setup = "artifacts/installer/Headroom-Setup-$env:VERSION.exe"
+          $portable = 'artifacts/publish/Headroom.exe'
+          $notes = (Get-Content .github/release-notes.md -Raw).Replace('{VERSION}', $env:VERSION)
+          $notes += "`n## SHA-256`n`n| Arquivo | SHA-256 |`n|---|---|`n"
+          foreach ($f in $setup, $portable) {
+            $notes += "| $(Split-Path $f -Leaf) | ``$((Get-FileHash $f -Algorithm SHA256).Hash)`` |`n"
+          }
+          Set-Content -Path notes.md -Value $notes -Encoding utf8
+          gh release create '${{ github.ref_name }}' $setup $portable --title "Headroom $env:VERSION" --notes-file notes.md

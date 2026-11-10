@@ -6,6 +6,16 @@ otimização, feito em C# .NET 8 + WPF (MVVM), com interface toda em português 
 
 ![Mapa de espaço](docs/screenshots/treemap.png)
 
+## Download
+
+Baixe a versão mais recente em **[Releases](https://github.com/MaikeSouzaL/headroom/releases/latest)**:
+
+- **Headroom-Setup-x.y.z.exe**: instalador (Menu Iniciar, Área de Trabalho opcional e desinstalação pelo Windows).
+- **Headroom.exe**: versão portátil, um único arquivo que é só abrir.
+
+Nenhum dos dois precisa do .NET instalado. Como os arquivos ainda não têm assinatura digital, o Windows pode
+mostrar "O Windows protegeu o computador": clique em **Mais informações → Executar assim mesmo**.
+
 ## O que ele faz
 
 | Área | Recursos |
@@ -75,6 +85,10 @@ Equivalente manual:
 dotnet publish src\Headroom.App -c Release -r win-x64 --self-contained true `
   -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true
 ```
+
+Para publicar uma versão nova no GitHub, envie uma tag `vX.Y.Z` (por exemplo, `git tag v1.0.1` e
+`git push origin v1.0.1`). A Action [Release](.github/workflows/release.yml) roda os testes, gera o `.exe`
+e o instalador com essa versão e cria o release com os dois arquivos e o SHA-256 de cada um.
 
 ## Linha de comando
 

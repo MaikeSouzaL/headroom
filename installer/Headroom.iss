@@ -2,7 +2,9 @@
 ; Gerado por build\publish.ps1, que passa /DPublishDir=<pasta do dotnet publish>.
 
 #define AppName "Headroom"
-#define AppVersion "1.0.0"
+#ifndef AppVersion
+  #define AppVersion "1.0.0"
+#endif
 #define AppPublisher "Headroom"
 #define AppExe "Headroom.exe"
 #ifndef PublishDir
