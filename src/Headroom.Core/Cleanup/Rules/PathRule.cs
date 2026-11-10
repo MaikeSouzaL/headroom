@@ -121,6 +121,9 @@ public class PathRule : CleanupRuleBase
         var roots = new List<AllowedRoot>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+        // Um arquivo com vários hardlinks (em um ou mais alvos desta regra) soma o tamanho uma vez só.
+        var links = new HardLinkSet();
+
         foreach (var target in _definition.Targets)
         {
             foreach (var basePath in context.Paths.Expand(target.Path))
@@ -130,7 +133,7 @@ public class PathRule : CleanupRuleBase
                 {
                     case TargetMode.Self:
                         roots.Add(new AllowedRoot(basePath, AllowRootItself: true));
-                        var self = DescribeSelf(basePath, target, ct);
+                        var self = DescribeSelf(basePath, target, links, ct);
                         if (self is not null && seen.Add(self.Path))
                         {
                             items.Add(self);
@@ -153,7 +156,7 @@ public class PathRule : CleanupRuleBase
                                 continue;
                             }
 
-                            var described = DescribeSelf(child.FullName, target, ct);
+                            var described = DescribeSelf(child.FullName, target, links, ct);
                             if (described is not null && seen.Add(described.Path))
                             {
                                 items.Add(described);
@@ -166,7 +169,7 @@ public class PathRule : CleanupRuleBase
                         if (Directory.Exists(basePath))
                         {
                             roots.Add(new AllowedRoot(basePath));
-                            foreach (var item in CollectContents(basePath, target, ct).Items)
+                            foreach (var item in CollectContents(basePath, target, links, ct))
                             {
                                 if (seen.Add(item.Path))
                                 {
@@ -178,7 +181,7 @@ public class PathRule : CleanupRuleBase
                         {
                             // Um arquivo indicado diretamente (ex.: %WINDIR%\MEMORY.DMP).
                             roots.Add(new AllowedRoot(basePath, AllowRootItself: true));
-                            var self2 = DescribeSelf(basePath, target, ct);
+                            var self2 = DescribeSelf(basePath, target, links, ct);
                             if (self2 is not null && seen.Add(self2.Path))
                             {
                                 items.Add(self2);
@@ -254,16 +257,18 @@ public class PathRule : CleanupRuleBase
     }
 
     /// <summary>
-    /// Coleta os itens de uma pasta. Se TUDO dentro de uma subpasta passa nos filtros, a subpasta inteira
-    /// vira um único item; senão, só os arquivos que passam são listados (percurso paralelo em <see cref="ContentWalker"/>).
+    /// Itens de um alvo <see cref="TargetMode.Contents"/>. Se TUDO dentro de uma subpasta passa nos filtros, a subpasta
+    /// inteira vira um único item; senão, só os arquivos que passam são listados (percurso paralelo em <see cref="ContentWalker"/>).
+    /// A limpeza fica restrita à pasta do alvo (DeletionGuard), seja qual for a implementação.
     /// </summary>
-    private static ContentWalker.ContentResult CollectContents(string directory, PathTarget target, CancellationToken ct) =>
-        ContentWalker.Collect(directory, target, ct);
+    private protected virtual IEnumerable<CleanupItem> CollectContents(string directory, PathTarget target, HardLinkSet links,
+        CancellationToken ct) =>
+        ContentWalker.Collect(directory, target, ct, links: links).Items;
 
     internal static bool IsExcluded(string name, PathTarget target) =>
         target.Exclude is { Count: > 0 } excludes && excludes.Any(x => PathExpander.MatchesWildcard(name, x));
 
-    private static CleanupItem? DescribeSelf(string path, PathTarget target, CancellationToken ct)
+    private static CleanupItem? DescribeSelf(string path, PathTarget target, HardLinkSet links, CancellationToken ct)
     {
         try
         {
@@ -288,7 +293,7 @@ public class PathRule : CleanupRuleBase
                     return null;
                 }
 
-                var (size, files, newest) = MeasureDirectory(path, ct);
+                var (size, files, newest) = ContentWalker.Measure(path, ct, links: links);
                 if (target.MinAgeDays > 0 && newest > DateTime.Now.AddDays(-target.MinAgeDays))
                 {
                     return null;
@@ -309,7 +314,7 @@ public class PathRule : CleanupRuleBase
         return null;
     }
 
-    /// <summary>Tamanho, arquivos e data mais recente de uma pasta (sem seguir links; percurso paralelo).</summary>
+    /// <summary>Tamanho, arquivos e data mais recente de uma pasta (sem seguir links; hardlinks contam uma vez; percurso paralelo).</summary>
     public static (long Size, int Files, DateTime Newest) MeasureDirectory(string path, CancellationToken ct) =>
         ContentWalker.Measure(path, ct);
 

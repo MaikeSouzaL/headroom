@@ -51,8 +51,8 @@ internal static class DevCatalog
         yield return Def("dev.pip", Dev, "pip: cache", "Cache de downloads e wheels do pip.")
             .Contents(@"%LOCALAPPDATA%\pip\cache").Build();
 
-        yield return Def("dev.uv", Dev, "uv: cache", "Cache do gerenciador Python uv (pacotes, builds e índices).")
-            .Contents(@"%LOCALAPPDATA%\uv\cache").Close("uv.exe").Build();
+        yield return new UvCacheRule(Def("dev.uv", Dev, "uv: cache", "Cache do gerenciador Python uv (pacotes, builds e índices).")
+            .Contents(@"%LOCALAPPDATA%\uv\cache").Close("uv.exe"));
 
         yield return Def("dev.poetry", Dev, "Poetry: cache", "Cache de pacotes e artefatos do Poetry.")
             .Contents(@"%LOCALAPPDATA%\pypoetry\Cache").Build();
