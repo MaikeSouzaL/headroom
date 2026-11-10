@@ -78,7 +78,7 @@ powershell -ExecutionPolicy Bypass -File build\publish.ps1
 ```
 
 Gera `artifacts\publish\Headroom.exe` (self-contained, single-file, win-x64 — não precisa do .NET
-instalado) e, se o Inno Setup 6 estiver instalado, `artifacts\installer\Headroom-Setup-1.0.0.exe`.
+instalado) e, se o Inno Setup 6 estiver instalado, `artifacts\installer\Headroom-Setup-<versão>.exe`.
 Equivalente manual:
 
 ```powershell

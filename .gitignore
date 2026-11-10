@@ -10,3 +10,6 @@ TestResults/
 .memoria/
 *.hrscan
 *.dlscan
+
+# Worktrees e dados locais das sessões do Claude Code
+.claude/

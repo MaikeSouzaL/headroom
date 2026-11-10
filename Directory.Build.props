@@ -7,7 +7,7 @@
     <Company>Headroom</Company>
     <Product>Headroom</Product>
     <Copyright>© 2026 Headroom</Copyright>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <NeutralLanguage>pt-BR</NeutralLanguage>
     <SatelliteResourceLanguages>pt-BR</SatelliteResourceLanguages>
     <!-- CA1416: o app é exclusivo para Windows (net8.0-windows). -->
