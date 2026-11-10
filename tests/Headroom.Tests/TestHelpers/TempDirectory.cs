@@ -7,8 +7,14 @@ namespace Headroom.Tests.TestHelpers;
 public sealed class TempDirectory : IDisposable
 {
     public TempDirectory()
+        : this(null)
     {
-        Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "HeadroomTests", Guid.NewGuid().ToString("N")[..12]);
+    }
+
+    /// <param name="parent">Onde criar (padrão: %TEMP%, que pode vir com nome curto 8.3, como ADMINI~1).</param>
+    public TempDirectory(string? parent)
+    {
+        Path = System.IO.Path.Combine(parent ?? System.IO.Path.GetTempPath(), "HeadroomTests", Guid.NewGuid().ToString("N")[..12]);
         Directory.CreateDirectory(Path);
     }
 

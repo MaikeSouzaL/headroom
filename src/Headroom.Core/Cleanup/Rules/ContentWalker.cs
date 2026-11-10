@@ -1,8 +1,6 @@
 using System.Collections.Concurrent;
 using System.IO.Enumeration;
 using System.Runtime.ExceptionServices;
-using System.Runtime.InteropServices;
-using Microsoft.Win32.SafeHandles;
 
 namespace Headroom.Core.Cleanup.Rules;
 
@@ -26,12 +24,10 @@ namespace Headroom.Core.Cleanup.Rules;
 /// arquivos (FAT, exFAT, ReFS, rede) a listagem é a do .NET, sem deduplicação.
 /// </para>
 /// </remarks>
-internal sealed unsafe class ContentWalker
+internal sealed class ContentWalker
 {
     /// <summary>Threads por percurso (a análise roda até 4 regras ao mesmo tempo).</summary>
     internal static readonly int DefaultMaxThreads = Math.Clamp(Environment.ProcessorCount / 2, 2, 6);
-
-    private const int ListBufferSize = 32 * 1024;
 
     private static readonly EnumerationOptions ShallowOptions = new()
     {
@@ -52,6 +48,7 @@ internal sealed unsafe class ContentWalker
     private readonly string? _skip;
     private readonly string? _skipNamed;
     private readonly FileSystemEnumerable<Entry>.FindTransform _transform;
+    private readonly DirectoryReader.Transform<Entry> _nativeTransform;
 
     private readonly object _lock = new();
     private readonly Stack<Node> _work = new();
@@ -80,6 +77,7 @@ internal sealed unsafe class ContentWalker
         }
 
         _transform = Transform;
+        _nativeTransform = NativeTransform;
     }
 
     /// <summary>Resultado de <see cref="Collect"/>.</summary>
@@ -137,7 +135,7 @@ internal sealed unsafe class ContentWalker
 
     private Node Run(string directory)
     {
-        _volume = LocalNtfsVolume(directory);
+        _volume = DirectoryReader.LocalNtfsVolume(directory);
         var root = new Node(directory, null);
         _work.Push(root);
         WorkerLoop();
@@ -151,7 +149,7 @@ internal sealed unsafe class ContentWalker
         try
         {
             // Buffer da listagem nativa, um por thread (fixo na memória: vai direto para o kernel).
-            byte[]? buffer = _volume is null ? null : GC.AllocateUninitializedArray<byte>(ListBufferSize, pinned: true);
+            byte[]? buffer = _volume is null ? null : DirectoryReader.NewBuffer();
             while (true)
             {
                 Node node;
@@ -437,60 +435,21 @@ internal sealed unsafe class ContentWalker
             entry.LastWriteTimeUtc.UtcDateTime.ToLocalTime(), fileId: 0);
 
     /// <summary>
-    /// Lista a pasta com <c>GetFileInformationByHandleEx(FileIdBothDirectoryInfo)</c>: as mesmas entradas, na mesma
-    /// ordem e com os mesmos dados do FileSystemEnumerable (ambos usam NtQueryDirectoryFile), mais o file ID.
-    /// Falha ao abrir conta como pasta vazia, como no .NET com IgnoreInaccessible; erro no meio da leitura vira
-    /// IOException (a pasta conta como vazia em <see cref="Process"/>).
+    /// Lista a pasta com o file ID de cada arquivo (<see cref="DirectoryReader"/>): as mesmas entradas, na mesma ordem
+    /// e com os mesmos dados do FileSystemEnumerable. Falha ao abrir conta como pasta vazia, como no .NET com
+    /// IgnoreInaccessible; erro no meio da leitura vira IOException (a pasta conta como vazia em <see cref="Process"/>).
     /// </summary>
     private Entry[] ListNative(string directory, byte[] buffer)
     {
-        using var handle = OpenDirectory(directory);
-        if (handle.IsInvalid)
-        {
-            return Array.Empty<Entry>();
-        }
-
         var list = new List<Entry>();
-        fixed (byte* start = buffer)
-        {
-            while (true)
-            {
-                _ct.ThrowIfCancellationRequested();
-                if (!Native.GetFileInformationByHandleEx(handle, Native.FileIdBothDirectoryInfo, start, (uint)buffer.Length))
-                {
-                    int error = Marshal.GetLastPInvokeError();
-                    if (error is Native.ErrorNoMoreFiles or Native.ErrorFileNotFound)
-                    {
-                        break;
-                    }
+        return DirectoryReader.TryList(directory, buffer, _nativeTransform, list, _ct, out _) ? list.ToArray() : Array.Empty<Entry>();
+    }
 
-                    throw new IOException($"Falha ao listar {directory} (erro {error}).", Marshal.GetHRForLastWin32Error());
-                }
-
-                byte* record = start;
-                while (true)
-                {
-                    var info = (Native.FileIdBothDirInfo*)record;
-                    var name = new ReadOnlySpan<char>(record + Native.FileNameOffset, (int)(info->FileNameLength / sizeof(char)));
-                    if (!name.SequenceEqual(".") && !name.SequenceEqual(".."))
-                    {
-                        var attributes = (FileAttributes)info->FileAttributes;
-                        bool isDirectory = (attributes & FileAttributes.Directory) != 0;
-                        list.Add(MakeEntry(name, attributes, isDirectory ? 0 : info->EndOfFile,
-                            DateTime.FromFileTimeUtc(info->LastWriteTime).ToLocalTime(), isDirectory ? 0 : info->FileId));
-                    }
-
-                    if (info->NextEntryOffset == 0)
-                    {
-                        break;
-                    }
-
-                    record += info->NextEntryOffset;
-                }
-            }
-        }
-
-        return list.ToArray();
+    private Entry NativeTransform(ReadOnlySpan<char> name, FileAttributes attributes, long length, long lastWriteTimeUtc, long fileId)
+    {
+        bool isDirectory = (attributes & FileAttributes.Directory) != 0;
+        return MakeEntry(name, attributes, isDirectory ? 0 : length, DateTime.FromFileTimeUtc(lastWriteTimeUtc).ToLocalTime(),
+            isDirectory ? 0 : fileId);
     }
 
     private Entry MakeEntry(ReadOnlySpan<char> name, FileAttributes attributes, long length, DateTime lastWrite, long fileId)
@@ -520,53 +479,6 @@ internal sealed unsafe class ContentWalker
         }
 
         return result;
-    }
-
-    /// <summary>Mesma abertura do FileSystemEnumerator (segue a pasta-raiz se ela for junction, como antes).</summary>
-    private static SafeFileHandle OpenDirectory(string directory) =>
-        Native.CreateFileW(@"\\?\" + directory, Native.FileListDirectory | Native.Synchronize,
-            FileShare.ReadWrite | FileShare.Delete, IntPtr.Zero, FileMode.Open, Native.FileFlagBackupSemantics, IntPtr.Zero);
-
-    /// <summary>
-    /// Serial do volume quando a pasta está num disco local NTFS (onde o file ID identifica o arquivo e há
-    /// hardlinks); null nos outros casos, que seguem com a listagem do .NET.
-    /// </summary>
-    private static uint? LocalNtfsVolume(string directory)
-    {
-        string full;
-        try
-        {
-            full = Path.TrimEndingDirectorySeparator(Path.GetFullPath(directory));
-        }
-        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
-        {
-            return null;
-        }
-
-        // Caminhos UNC (rede) e já prefixados ficam com o .NET.
-        string? root = Path.GetPathRoot(full);
-        if (full.StartsWith(@"\\", StringComparison.Ordinal) || root is not { Length: 3 } ||
-            Native.GetDriveTypeW(root) is not (Native.DriveFixed or Native.DriveRemovable))
-        {
-            return null;
-        }
-
-        using var handle = OpenDirectory(full);
-        if (handle.IsInvalid)
-        {
-            return null;
-        }
-
-        char* fileSystem = stackalloc char[32];
-        if (!Native.GetVolumeInformationByHandleW(handle, null, 0, out uint serial, out _, out _, fileSystem, 32))
-        {
-            return null;
-        }
-
-        return new ReadOnlySpan<char>(fileSystem, 32).IndexOf('\0') is var end and >= 0 &&
-               new ReadOnlySpan<char>(fileSystem, end).SequenceEqual("NTFS")
-            ? serial
-            : null;
     }
 
     private bool FileMatches(string name, long length, DateTime lastWrite)
@@ -632,47 +544,5 @@ internal sealed unsafe class ContentWalker
         public long Size;
         public int Files;
         public DateTime Newest;
-    }
-
-    private static class Native
-    {
-        public const uint FileListDirectory = 0x0001;
-        public const uint Synchronize = 0x00100000;
-        public const uint FileFlagBackupSemantics = 0x02000000;
-        public const int FileIdBothDirectoryInfo = 10;
-        public const int ErrorFileNotFound = 2;
-        public const int ErrorNoMoreFiles = 18;
-        public const uint DriveRemovable = 2;
-        public const uint DriveFixed = 3;
-
-        /// <summary>Deslocamento de FileName em FILE_ID_BOTH_DIR_INFO.</summary>
-        public const int FileNameOffset = 104;
-
-        /// <summary>FILE_ID_BOTH_DIR_INFO (só os campos usados).</summary>
-        [StructLayout(LayoutKind.Explicit)]
-        public struct FileIdBothDirInfo
-        {
-            [FieldOffset(0)] public uint NextEntryOffset;
-            [FieldOffset(24)] public long LastWriteTime;
-            [FieldOffset(40)] public long EndOfFile;
-            [FieldOffset(56)] public uint FileAttributes;
-            [FieldOffset(60)] public uint FileNameLength;
-            [FieldOffset(96)] public long FileId;
-        }
-
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        public static extern SafeFileHandle CreateFileW(string fileName, uint desiredAccess, FileShare shareMode,
-            IntPtr securityAttributes, FileMode creationDisposition, uint flagsAndAttributes, IntPtr templateFile);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern bool GetFileInformationByHandleEx(SafeFileHandle file, int fileInformationClass, byte* buffer, uint bufferSize);
-
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        public static extern bool GetVolumeInformationByHandleW(SafeFileHandle file, char* volumeName, uint volumeNameSize,
-            out uint volumeSerialNumber, out uint maximumComponentLength, out uint fileSystemFlags, char* fileSystemName,
-            uint fileSystemNameSize);
-
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
-        public static extern uint GetDriveTypeW(string rootPathName);
     }
 }

@@ -18,7 +18,13 @@ public sealed class DeletionResult
     private const int MaxMessages = 300;
     private readonly List<string> _messages = new();
 
+    /// <summary>
+    /// Espaço que saiu: cada arquivo conta uma vez, mesmo quando vários hardlinks dele foram apagados (como na análise).
+    /// Se um link do arquivo ficar fora da limpeza, o espaço só volta quando ele também sair.
+    /// </summary>
     public long BytesDeleted { get; private set; }
+
+    /// <summary>Caminhos de arquivo apagados (cada hardlink é um caminho).</summary>
     public int FilesDeleted { get; private set; }
     public int DirectoriesDeleted { get; private set; }
     public int SkippedInUse { get; private set; }

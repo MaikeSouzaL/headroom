@@ -14,7 +14,19 @@ public sealed record AllowedRoot(string Path, bool AllowRootItself = false);
 /// </summary>
 public sealed class DeletionGuard
 {
+    /// <summary>
+    /// Até quantas pastas o cache de "é link?" guarda. A limpeza confere cada item de uma pasta antes de mandá-la para
+    /// a Lixeira; sem limite, um cache com milhões de pastas (o do uv tem 6 milhões) deixava um caminho por pasta na
+    /// memória enquanto o app estivesse aberto (o guarda padrão vive o app inteiro). Ao encher, recomeça vazio: só
+    /// volta a perguntar ao disco, nunca deixa de conferir.
+    /// </summary>
+    internal const int MaxCachedDirectories = 65_536;
+
     private readonly ConcurrentDictionary<string, bool> _reparseCache = new(StringComparer.OrdinalIgnoreCase);
+    private int _cachedDirectories;
+
+    /// <summary>Pastas no cache de links (para testes).</summary>
+    internal int CachedDirectoryCount => _reparseCache.Count;
 
     public DeletionGuard(ProtectedPaths policy)
     {
@@ -94,18 +106,17 @@ public sealed class DeletionGuard
         string rootTrimmed = root.TrimEnd('\\');
         while (current is not null && current.Length > rootTrimmed.Length)
         {
-            bool isLink = _reparseCache.GetOrAdd(current, static dir =>
+            if (!_reparseCache.TryGetValue(current, out bool isLink))
             {
-                try
+                isLink = IsReparsePoint(current);
+                if (Interlocked.Increment(ref _cachedDirectories) > MaxCachedDirectories)
                 {
-                    var attributes = File.GetAttributes(dir);
-                    return (attributes & FileAttributes.ReparsePoint) != 0;
+                    _reparseCache.Clear();
+                    Interlocked.Exchange(ref _cachedDirectories, 1);
                 }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-                {
-                    return false;
-                }
-            });
+
+                _reparseCache.TryAdd(current, isLink);
+            }
 
             if (isLink)
             {
@@ -116,5 +127,17 @@ public sealed class DeletionGuard
         }
 
         return false;
+    }
+
+    private static bool IsReparsePoint(string directory)
+    {
+        try
+        {
+            return (File.GetAttributes(directory) & FileAttributes.ReparsePoint) != 0;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
     }
 }

@@ -29,4 +29,34 @@ internal sealed class HardLinkSet
         long mask = 1L << (bit & 63);
         return (Interlocked.Or(ref page[bit >> 6], mask) & mask) == 0;
     }
+
+    /// <summary>true se o arquivo já foi marcado.</summary>
+    public bool Contains(uint volumeSerial, long fileId)
+    {
+        long record = fileId & RecordMask;
+        if (!_pages.TryGetValue((volumeSerial, record >> PageBits), out var page))
+        {
+            return false;
+        }
+
+        int bit = (int)(record & PageMask);
+        return (Volatile.Read(ref page[bit >> 6]) & (1L << (bit & 63))) != 0;
+    }
+
+    /// <summary>Marca todos os arquivos de <paramref name="other"/> (ex.: os de uma pasta que acabou de sair).</summary>
+    public void UnionWith(HardLinkSet other)
+    {
+        foreach (var (key, source) in other._pages)
+        {
+            var page = _pages.GetOrAdd(key, static _ => new long[(1 << PageBits) / 64]);
+            for (int i = 0; i < source.Length; i++)
+            {
+                long bits = Volatile.Read(ref source[i]);
+                if (bits != 0)
+                {
+                    Interlocked.Or(ref page[i], bits);
+                }
+            }
+        }
+    }
 }
