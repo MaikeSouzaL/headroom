@@ -1,0 +1,120 @@
+<UserControl x:Class="Headroom.App.Views.FolderTreeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:vm="clr-namespace:Headroom.App.ViewModels"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance vm:FolderTreeViewModel}">
+    <DockPanel Margin="4,0,4,8">
+        <DockPanel DockPanel.Dock="Top">
+            <ui:Button DockPanel.Dock="Right" Content="Recolher tudo" Icon="{ui:SymbolIcon ArrowMinimize24}"
+                       Command="{Binding CollapseAllCommand}" VerticalAlignment="Center" />
+            <StackPanel>
+                <TextBlock Text="Árvore de pastas" Style="{StaticResource PageTitle}" />
+                <TextBlock Text="{Binding Summary}" Style="{StaticResource PageSubtitle}" Margin="0,0,0,12" />
+            </StackPanel>
+        </DockPanel>
+
+        <ContentControl DockPanel.Dock="Top" Content="{Binding}" ContentTemplate="{StaticResource CheckedActionBar}"
+                        Focusable="False" Margin="0,0,0,8" />
+
+        <DataGrid x:Name="Grid"
+                  ItemsSource="{Binding Rows}"
+                  SelectedItem="{Binding SelectedRow}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  CanUserSortColumns="False"
+                  CanUserReorderColumns="False"
+                  SelectionMode="Single"
+                  SelectionUnit="FullRow"
+                  HeadersVisibility="Column"
+                  GridLinesVisibility="None"
+                  EnableRowVirtualization="True"
+                  VirtualizingPanel.IsVirtualizing="True"
+                  VirtualizingPanel.VirtualizationMode="Recycling"
+                  VirtualizingPanel.ScrollUnit="Pixel"
+                  ScrollViewer.CanContentScroll="True"
+                  ContextMenu="{StaticResource FileContextMenu}"
+                  MouseDoubleClick="OnDoubleClick"
+                  PreviewKeyDown="OnKeyDown"
+                  AutomationProperties.Name="Árvore de pastas ordenada por tamanho">
+            <DataGrid.Columns>
+                <DataGridTemplateColumn Width="44" CanUserResize="False">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate DataType="{x:Type vm:TreeRowViewModel}">
+                            <CheckBox Style="{StaticResource RowCheckBox}" IsChecked="{Binding IsChecked, UpdateSourceTrigger=PropertyChanged}"
+                                      Visibility="{Binding CanCheck, Converter={StaticResource BoolToVis}}"
+                                      AutomationProperties.Name="{Binding Name, StringFormat='Marcar {0} para excluir'}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Nome" Width="*" MinWidth="280">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate DataType="{x:Type vm:TreeRowViewModel}">
+                            <StackPanel Orientation="Horizontal" Margin="{Binding Depth, Converter={StaticResource Indent}}">
+                                <Button Width="22" Height="22" Padding="0" Margin="0,0,4,0" Focusable="False"
+                                        Background="Transparent" BorderThickness="0"
+                                        Command="{Binding ToggleCommand}"
+                                        Visibility="{Binding CanExpand, Converter={StaticResource BoolToVis}}"
+                                        AutomationProperties.Name="Expandir ou recolher">
+                                    <ui:SymbolIcon FontSize="12">
+                                        <ui:SymbolIcon.Style>
+                                            <Style TargetType="ui:SymbolIcon">
+                                                <Setter Property="Symbol" Value="ChevronRight16" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                                        <Setter Property="Symbol" Value="ChevronDown16" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </ui:SymbolIcon.Style>
+                                    </ui:SymbolIcon>
+                                </Button>
+                                <Border Width="26" Visibility="{Binding CanExpand, Converter={StaticResource BoolToVis}, ConverterParameter=inverse}" />
+                                <ui:SymbolIcon Symbol="{Binding Icon}" Foreground="{Binding IconBrush}" FontSize="16" Margin="0,0,8,0" Filled="True" />
+                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Tamanho" Width="110">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate DataType="{x:Type vm:TreeRowViewModel}">
+                            <TextBlock Text="{Binding SizeText}" HorizontalAlignment="Right" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="% da pasta-pai" Width="180">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate DataType="{x:Type vm:TreeRowViewModel}">
+                            <Grid VerticalAlignment="Center">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="52" />
+                                </Grid.ColumnDefinitions>
+                                <ProgressBar Style="{StaticResource UsageBar}" Value="{Binding Fraction, Mode=OneWay}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{Binding PercentText}" HorizontalAlignment="Right" Style="{StaticResource Caption}" />
+                            </Grid>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Arquivos" Width="100">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate DataType="{x:Type vm:TreeRowViewModel}">
+                            <TextBlock Text="{Binding FilesText}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Modificado" Width="140">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate DataType="{x:Type vm:TreeRowViewModel}">
+                            <TextBlock Text="{Binding Modified, Converter={StaticResource Date}}" VerticalAlignment="Center" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+    </DockPanel>
+</UserControl>

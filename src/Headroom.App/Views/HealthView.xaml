@@ -1,0 +1,83 @@
+<UserControl x:Class="Headroom.App.Views.HealthView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:vm="clr-namespace:Headroom.App.ViewModels"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance vm:HealthViewModel}">
+    <DockPanel Margin="4,0,4,8">
+        <StackPanel DockPanel.Dock="Top">
+            <TextBlock Text="Saúde do PC" Style="{StaticResource PageTitle}" />
+            <TextBlock Text="{Binding SummaryText}" Style="{StaticResource PageSubtitle}" Margin="0,0,0,12" />
+
+            <DockPanel Margin="0,0,0,12">
+                <!-- Nota -->
+                <Border DockPanel.Dock="Left" Style="{StaticResource CardBorder}" Width="200" Margin="0,0,12,0"
+                        Visibility="{Binding HasReport, Converter={StaticResource BoolToVis}}">
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="Nota" Style="{StaticResource Caption}" HorizontalAlignment="Center" />
+                        <TextBlock Text="{Binding Score}" FontSize="44" FontWeight="Bold" Foreground="{Binding ScoreBrush}" HorizontalAlignment="Center" />
+                        <TextBlock Text="{Binding ScoreText}" Style="{StaticResource BodyText}" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+                <StackPanel VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:Button Content="Diagnosticar" Icon="{ui:SymbolIcon Stethoscope24}" Appearance="Primary" Command="{Binding RunCommand}" Margin="0,0,8,0" />
+                        <ui:Button Content="Cancelar" Icon="{ui:SymbolIcon Dismiss24}" Command="{Binding CancelCommand}"
+                                   Visibility="{Binding IsRunning, Converter={StaticResource BoolToVis}}" Margin="0,0,16,0" />
+                        <ui:ToggleSwitch Content="Mostrar só o que precisa de atenção" IsChecked="{Binding ShowOnlyIssues}"
+                                         Visibility="{Binding HasReport, Converter={StaticResource BoolToVis}}" />
+                    </StackPanel>
+                    <StackPanel Visibility="{Binding IsRunning, Converter={StaticResource BoolToVis}}" Margin="0,12,0,0">
+                        <TextBlock Text="{Binding ProgressText}" Style="{StaticResource Caption}" />
+                        <ProgressBar IsIndeterminate="True" Height="6" Margin="0,4,0,0" />
+                    </StackPanel>
+                </StackPanel>
+            </DockPanel>
+        </StackPanel>
+
+        <ListBox ItemsSource="{Binding Findings}" Background="Transparent" BorderThickness="0"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 VirtualizingPanel.ScrollUnit="Pixel"
+                 AutomationProperties.Name="Resultados do diagnóstico">
+            <ListBox.ItemContainerStyle>
+                <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    <Setter Property="Padding" Value="0" />
+                    <Setter Property="Margin" Value="0,0,0,6" />
+                    <Setter Property="Focusable" Value="False" />
+                </Style>
+            </ListBox.ItemContainerStyle>
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="{x:Type vm:FindingViewModel}">
+                    <Border Style="{StaticResource CardBorder}" Padding="12" BorderBrush="{Binding StatusBrush}">
+                        <DockPanel>
+                            <ui:SymbolIcon DockPanel.Dock="Left" Symbol="{Binding Icon}" Foreground="{Binding StatusBrush}" FontSize="26"
+                                           VerticalAlignment="Top" Margin="0,0,12,0" Filled="True" />
+                            <ui:Button DockPanel.Dock="Right" Content="{Binding ActionText}" VerticalAlignment="Top" Margin="12,0,0,0"
+                                       Command="{Binding DataContext.RunActionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                       CommandParameter="{Binding}"
+                                       Visibility="{Binding HasAction, Converter={StaticResource BoolToVis}}" />
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource BodyText}">
+                                    <Run Text="{Binding Title, Mode=OneWay}" FontWeight="SemiBold" />
+                                    <Run Text="  " />
+                                    <Run Text="{Binding Category, Mode=OneWay}" Foreground="{DynamicResource TextFillColorTertiaryBrush}" FontSize="12" />
+                                </TextBlock>
+                                <TextBlock Text="{Binding Summary}" Style="{StaticResource BodyText}" Margin="0,2,0,0" />
+                                <TextBlock Text="{Binding Recommendation}" Style="{StaticResource Caption}" Margin="0,4,0,0" FontStyle="Italic"
+                                           Visibility="{Binding Recommendation, Converter={StaticResource NullToVis}}" />
+                                <Expander Header="Detalhes" Margin="0,6,0,0" Padding="8"
+                                          Visibility="{Binding DetailsText, Converter={StaticResource NullToVis}}">
+                                    <TextBlock Text="{Binding DetailsText}" Style="{StaticResource Caption}" />
+                                </Expander>
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </DockPanel>
+</UserControl>

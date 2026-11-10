@@ -1,0 +1,79 @@
+<UserControl x:Class="Headroom.App.Views.HistoryView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
+             xmlns:vm="clr-namespace:Headroom.App.ViewModels"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance vm:HistoryViewModel}">
+    <DockPanel Margin="4,0,4,8">
+        <DockPanel DockPanel.Dock="Top">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                <ui:Button Content="Registrar espaço agora" Icon="{ui:SymbolIcon Add24}" Command="{Binding RecordNowCommand}" Margin="0,0,8,0" />
+                <ui:Button Content="Atualizar" Icon="{ui:SymbolIcon ArrowClockwise24}" Command="{Binding RefreshCommand}" />
+            </StackPanel>
+            <StackPanel>
+                <TextBlock Text="Histórico" Style="{StaticResource PageTitle}" />
+                <TextBlock Text="{Binding Summary}" Style="{StaticResource PageSubtitle}" Margin="0,0,0,12" />
+            </StackPanel>
+        </DockPanel>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="320" />
+                <RowDefinition Height="12" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Border Style="{StaticResource CardBorder}">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="Evolução do espaço livre" Style="{StaticResource SectionTitle}" Margin="0,0,0,4" />
+                    <lvc:CartesianChart Background="Transparent" Series="{Binding FreeSpaceSeries}" XAxes="{Binding XAxes}" YAxes="{Binding YAxes}"
+                                        LegendPosition="Bottom" LegendTextPaint="{Binding LegendPaint}"
+                                        TooltipTextPaint="{Binding TooltipTextPaint}" TooltipBackgroundPaint="{Binding TooltipBackgroundPaint}"
+                                        AutomationProperties.Name="Gráfico da evolução do espaço livre" />
+                </DockPanel>
+            </Border>
+
+            <TabControl Grid.Row="2">
+                <TabItem Header="Limpezas">
+                    <DataGrid ItemsSource="{Binding Cleanups}" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
+                              GridLinesVisibility="None" Margin="0,8,0,0" AutomationProperties.Name="Histórico de limpezas">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Data" Binding="{Binding Date, Converter={StaticResource Date}}" Width="140" />
+                            <DataGridTextColumn Header="Limpo" Binding="{Binding Freed}" Width="100" />
+                            <DataGridTextColumn Header="Para a Lixeira" Binding="{Binding RecycleBin}" Width="110" />
+                            <DataGridTextColumn Header="Regras" Binding="{Binding Rules}" Width="70" />
+                            <DataGridTextColumn Header="Pulados" Binding="{Binding Skipped}" Width="80" />
+                            <DataGridTextColumn Header="Erros" Binding="{Binding Errors}" Width="70" />
+                            <DataGridTextColumn Header="Origem" Binding="{Binding Origin}" Width="*" />
+                            <DataGridTemplateColumn Header="" Width="90">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate DataType="{x:Type vm:CleanupHistoryRow}">
+                                        <ui:Button Content="Log" Appearance="Transparent" Padding="8,2"
+                                                   Command="{Binding DataContext.OpenLogCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                   CommandParameter="{Binding}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </TabItem>
+                <TabItem Header="Scans">
+                    <DataGrid ItemsSource="{Binding Scans}" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
+                              GridLinesVisibility="None" Margin="0,8,0,0" AutomationProperties.Name="Histórico de scans">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Data" Binding="{Binding Date, Converter={StaticResource Date}}" Width="140" />
+                            <DataGridTextColumn Header="Local" Binding="{Binding Root}" Width="*" />
+                            <DataGridTextColumn Header="Total" Binding="{Binding Total}" Width="100" />
+                            <DataGridTextColumn Header="Arquivos" Binding="{Binding Files}" Width="110" />
+                            <DataGridTextColumn Header="Livre no disco" Binding="{Binding Free}" Width="110" />
+                            <DataGridTextColumn Header="Duração" Binding="{Binding Duration}" Width="100" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </TabItem>
+            </TabControl>
+        </Grid>
+    </DockPanel>
+</UserControl>

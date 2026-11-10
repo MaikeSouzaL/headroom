@@ -1,0 +1,128 @@
+<UserControl x:Class="Headroom.App.Views.DuplicatesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:vm="clr-namespace:Headroom.App.ViewModels"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance vm:DuplicatesViewModel}">
+    <DockPanel Margin="4,0,4,8">
+        <StackPanel DockPanel.Dock="Top">
+            <TextBlock Text="Duplicados" Style="{StaticResource PageTitle}" />
+            <TextBlock Text="{Binding Summary}" Style="{StaticResource PageSubtitle}" Margin="0,0,0,12" />
+
+            <WrapPanel Margin="0,0,0,12">
+                <StackPanel Orientation="Horizontal" Margin="0,0,12,8">
+                    <TextBlock Text="Tamanho mínimo (MB)" VerticalAlignment="Center" Margin="0,0,8,0" Style="{StaticResource Caption}" />
+                    <ui:NumberBox Value="{Binding MinimumSizeMb, UpdateSourceTrigger=PropertyChanged}" Minimum="0" Maximum="100000"
+                                  SmallChange="1" Width="130" AutomationProperties.Name="Tamanho mínimo em MB" />
+                </StackPanel>
+                <ui:Button Appearance="Primary" Icon="{ui:SymbolIcon Search24}" Content="Procurar duplicados"
+                           Command="{Binding FindCommand}" Margin="0,0,12,8" />
+                <ui:Button Icon="{ui:SymbolIcon Dismiss24}" Content="Cancelar" Command="{Binding CancelSearchCommand}" Margin="0,0,12,8"
+                           Visibility="{Binding IsSearching, Converter={StaticResource BoolToVis}}" />
+            </WrapPanel>
+
+            <StackPanel Visibility="{Binding IsSearching, Converter={StaticResource BoolToVis}}" Margin="0,0,0,12">
+                <TextBlock Text="{Binding ProgressText}" Style="{StaticResource Caption}" />
+                <ProgressBar Value="{Binding ProgressValue, Mode=OneWay}" Minimum="0" Maximum="1" Height="6" Margin="0,4,0,0" />
+            </StackPanel>
+
+            <ContentControl Content="{Binding}" ContentTemplate="{StaticResource CheckedActionBar}" Focusable="False" Margin="0,0,0,8"
+                            Visibility="{Binding HasGroups, Converter={StaticResource BoolToVis}}" />
+        </StackPanel>
+
+        <ListBox ItemsSource="{Binding Groups}"
+                 VirtualizingPanel.IsVirtualizing="True"
+                 VirtualizingPanel.VirtualizationMode="Recycling"
+                 VirtualizingPanel.ScrollUnit="Pixel"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 Background="Transparent" BorderThickness="0"
+                 AutomationProperties.Name="Grupos de arquivos duplicados">
+            <ListBox.ItemContainerStyle>
+                <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    <Setter Property="Padding" Value="0" />
+                    <Setter Property="Margin" Value="0,0,0,8" />
+                    <Setter Property="Focusable" Value="False" />
+                </Style>
+            </ListBox.ItemContainerStyle>
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="{x:Type vm:DuplicateGroupViewModel}">
+                    <Border Style="{StaticResource CardBorder}" Padding="12">
+                        <StackPanel>
+                            <TextBlock Text="{Binding FirstName}" FontWeight="SemiBold" Style="{StaticResource BodyText}" />
+                            <TextBlock Text="{Binding Header}" Style="{StaticResource Caption}" Margin="0,0,0,8" />
+                            <TextBlock Text="Todas as cópias estão marcadas: desmarque pelo menos uma para não perder o arquivo."
+                                       Foreground="{DynamicResource SystemFillColorCriticalBrush}" FontWeight="SemiBold" Margin="0,0,0,6"
+                                       TextWrapping="Wrap"
+                                       Visibility="{Binding AllChecked, Converter={StaticResource BoolToVis}}" />
+                            <ItemsControl ItemsSource="{Binding Files}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type vm:DuplicateFileViewModel}">
+                                        <Grid Margin="0,2" Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                            <Grid.ContextMenu>
+                                                <ContextMenu>
+                                                    <MenuItem Header="Abrir no Explorer"
+                                                              Command="{Binding PlacementTarget.Tag.OpenInExplorerCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                              CommandParameter="{Binding}" />
+                                                    <MenuItem Header="Copiar caminho"
+                                                              Command="{Binding PlacementTarget.Tag.CopyPathCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                              CommandParameter="{Binding}" />
+                                                    <MenuItem Header="Propriedades"
+                                                              Command="{Binding PlacementTarget.Tag.ShowPropertiesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                              CommandParameter="{Binding}" />
+                                                    <Separator />
+                                                    <MenuItem Header="Mover para a Lixeira"
+                                                              Command="{Binding PlacementTarget.Tag.MoveToRecycleBinCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                              CommandParameter="{Binding}" />
+                                                    <MenuItem Header="Excluir permanentemente…"
+                                                              Command="{Binding PlacementTarget.Tag.DeletePermanentlyCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                              CommandParameter="{Binding}" />
+                                                </ContextMenu>
+                                            </Grid.ContextMenu>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="40" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <CheckBox Style="{StaticResource RowCheckBox}" IsChecked="{Binding IsChecked, UpdateSourceTrigger=PropertyChanged}"
+                                                      Focusable="True" HorizontalAlignment="Left"
+                                                      AutomationProperties.Name="{Binding FullPath, StringFormat='Marcar {0} para excluir'}" />
+                                            <DockPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <Border DockPanel.Dock="Right" Style="{StaticResource Pill}" Margin="8,0,0,0" VerticalAlignment="Center"
+                                                        Visibility="{Binding IsSuggestedKeep, Converter={StaticResource BoolToVis}}">
+                                                    <TextBlock Text="mais antiga" FontSize="11" />
+                                                </Border>
+                                                <TextBlock Text="{Binding FullPath}" TextTrimming="CharacterEllipsis" ToolTip="{Binding FullPath}">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock" BasedOn="{StaticResource BodyText}">
+                                                            <Setter Property="TextWrapping" Value="NoWrap" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsChecked}" Value="True">
+                                                                    <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+                                                                    <Setter Property="TextDecorations" Value="Strikethrough" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </DockPanel>
+                                            <TextBlock Grid.Column="2" Style="{StaticResource Caption}" VerticalAlignment="Center" Margin="12,0,0,0">
+                                                <Run Text="criado" />
+                                                <Run Text="{Binding Created, Converter={StaticResource Date}, ConverterParameter=d, Mode=OneWay}" />
+                                                <Run Text="· modificado" />
+                                                <Run Text="{Binding Modified, Converter={StaticResource Date}, ConverterParameter=d, Mode=OneWay}" />
+                                            </TextBlock>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </DockPanel>
+</UserControl>

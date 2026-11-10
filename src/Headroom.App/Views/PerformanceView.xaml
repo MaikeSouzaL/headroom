@@ -1,0 +1,337 @@
+<UserControl x:Class="Headroom.App.Views.PerformanceView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
+             xmlns:vm="clr-namespace:Headroom.App.ViewModels"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance vm:PerformanceViewModel}">
+    <DockPanel Margin="4,0,4,8">
+        <DockPanel DockPanel.Dock="Top">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                <ui:ProgressRing IsIndeterminate="True" Width="20" Height="20" Margin="0,0,8,0"
+                                 Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}" />
+                <ui:Button Content="Atualizar" Icon="{ui:SymbolIcon ArrowClockwise24}" Command="{Binding RefreshCommand}" />
+            </StackPanel>
+            <StackPanel>
+                <TextBlock Text="Desempenho" Style="{StaticResource PageTitle}" />
+                <TextBlock Style="{StaticResource PageSubtitle}" Margin="0,0,0,12"
+                           Text="Processador e memória ao vivo, o que está deixando o PC lento, liberar memória, inicialização e ajustes reversíveis." />
+            </StackPanel>
+        </DockPanel>
+
+        <TabControl SelectedIndex="{Binding SelectedTab}">
+            <!-- ================= MONITOR ================= -->
+            <TabItem Header="Monitor">
+                <ScrollViewer x:Name="MonitorScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="0,12,0,16">
+                        <UniformGrid Columns="3" Margin="-6,0,-6,0">
+                            <Border Style="{StaticResource CardBorder}" Margin="6">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <ui:SymbolIcon Symbol="DeveloperBoard24" Margin="0,0,8,0" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+                                        <TextBlock Text="Processador" Style="{StaticResource Caption}" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding CpuText}" Style="{StaticResource StatValue}" Margin="0,6,0,0" />
+                                    <ProgressBar Style="{StaticResource UsageBar}" Value="{Binding CpuFraction, Mode=OneWay}" Margin="0,6,0,6" />
+                                    <TextBlock Text="{Binding CpuName}" Style="{StaticResource Caption}" TextTrimming="CharacterEllipsis" ToolTip="{Binding CpuName}" />
+                                    <TextBlock Text="{Binding CpuDetail}" Style="{StaticResource Caption}" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource CardBorder}" Margin="6">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <ui:SymbolIcon Symbol="Ram20" Margin="0,0,8,0" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+                                        <TextBlock Text="Memória (RAM)" Style="{StaticResource Caption}" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding MemoryText}" Style="{StaticResource StatValue}" Margin="0,6,0,0" />
+                                    <ProgressBar Value="{Binding MemoryFraction, Mode=OneWay}" Margin="0,6,0,6">
+                                        <ProgressBar.Style>
+                                            <Style TargetType="ProgressBar" BasedOn="{StaticResource UsageBar}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsMemoryCritical}" Value="True">
+                                                        <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </ProgressBar.Style>
+                                    </ProgressBar>
+                                    <TextBlock Text="{Binding MemoryDetail}" Style="{StaticResource Caption}" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource CardBorder}" Margin="6">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <ui:SymbolIcon Symbol="AppsListDetail24" Margin="0,0,8,0" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+                                        <TextBlock Text="Processos em execução" Style="{StaticResource Caption}" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding ProcessCountText}" Style="{StaticResource StatValue}" Margin="0,6,0,0" />
+                                    <TextBlock Text="{Binding ProcessDetail}" Style="{StaticResource Caption}" Margin="0,6,0,0" TextWrapping="Wrap" />
+                                    <ui:HyperlinkButton Content="Ver processos" Padding="0,4" Margin="0,4,0,0"
+                                                        Command="{Binding ShowProcessesCommand}" />
+                                </StackPanel>
+                            </Border>
+                        </UniformGrid>
+
+                        <Border Style="{StaticResource CardBorder}" Margin="0,12,0,0">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Text="Últimos 60 segundos" Style="{StaticResource SectionTitle}" Margin="0,0,0,4" />
+                                <lvc:CartesianChart Background="Transparent" Height="200"
+                                                    Series="{Binding MonitorSeries}" XAxes="{Binding MonitorXAxes}" YAxes="{Binding MonitorYAxes}"
+                                                    LegendPosition="Top" LegendTextPaint="{Binding LegendPaint}" TooltipPosition="Hidden"
+                                                    EasingFunction="{x:Null}"
+                                                    AutomationProperties.Name="Gráfico de uso do processador e da memória" />
+                            </DockPanel>
+                        </Border>
+
+                        <Grid Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="5*" />
+                                <ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="7*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Liberar memória -->
+                            <Border Style="{StaticResource CardBorder}">
+                                <StackPanel>
+                                    <TextBlock Text="Liberar memória" Style="{StaticResource SectionTitle}" Margin="0,0,0,4" />
+                                    <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,0,0,8"
+                                               Text="O Windows já usa a RAM livre como cache. Liberar só ajuda quando a memória está quase cheia — por exemplo, antes de abrir um jogo ou programa pesado. Os programas recarregam o que precisam aos poucos." />
+                                    <CheckBox IsChecked="{Binding FreeWorkingSets}" Content="Reduzir a memória dos programas em segundo plano" />
+                                    <CheckBox IsChecked="{Binding FreeStandby}" Content="Esvaziar o cache em espera (standby)" Margin="0,4,0,0"
+                                              IsEnabled="{Binding IsAdministrator}" />
+                                    <CheckBox IsChecked="{Binding FreeFileCache}" Content="Esvaziar o cache de arquivos do sistema" Margin="0,4,0,0"
+                                              IsEnabled="{Binding IsAdministrator}" />
+                                    <TextBlock Text="As opções de cache exigem executar como administrador." Style="{StaticResource Caption}" Margin="0,4,0,0"
+                                               Visibility="{Binding IsAdministrator, Converter={StaticResource BoolToVis}, ConverterParameter=inverse}" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                        <ui:Button Appearance="Primary" Icon="{ui:SymbolIcon Broom24}" Content="Liberar memória agora"
+                                                   Command="{Binding FreeMemoryCommand}" />
+                                        <ui:ProgressRing IsIndeterminate="True" Width="18" Height="18" Margin="12,0,0,0"
+                                                         Visibility="{Binding IsFreeingMemory, Converter={StaticResource BoolToVis}}" />
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding FreeMemoryResult}" Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,8,0,0"
+                                               Visibility="{Binding FreeMemoryResult, Converter={StaticResource NullToVis}}" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Recomendações -->
+                            <Border Grid.Column="2" Style="{StaticResource CardBorder}">
+                                <StackPanel>
+                                    <TextBlock Text="O que fazer agora" Style="{StaticResource SectionTitle}" Margin="0,0,0,8" />
+                                    <ItemsControl ItemsSource="{Binding Advice}" AutomationProperties.Name="Recomendações">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type vm:AdviceRowViewModel}">
+                                                <DockPanel Margin="0,4,0,8">
+                                                    <ui:SymbolIcon DockPanel.Dock="Left" Symbol="{Binding Icon}" Foreground="{Binding IconBrush}"
+                                                                   FontSize="20" Margin="0,0,10,0" VerticalAlignment="Top" Filled="True" />
+                                                    <ui:Button DockPanel.Dock="Right" Content="{Binding ActionText}" Margin="10,0,0,0" VerticalAlignment="Center"
+                                                               Padding="10,4"
+                                                               Visibility="{Binding HasAction, Converter={StaticResource BoolToVis}}"
+                                                               Command="{Binding DataContext.RunAdviceActionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                               CommandParameter="{Binding}" />
+                                                    <StackPanel>
+                                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Style="{StaticResource BodyText}" TextWrapping="Wrap" />
+                                                        <TextBlock Text="{Binding Detail}" Style="{StaticResource Caption}" TextWrapping="Wrap" />
+                                                    </StackPanel>
+                                                </DockPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ================= PROCESSOS ================= -->
+            <TabItem Header="Processos">
+                <DockPanel Margin="0,8,0,0">
+                    <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+                        <ui:TextBox PlaceholderText="Buscar processo…" Width="240" Margin="0,0,12,8" Icon="{ui:SymbolIcon Search24}"
+                                    Text="{Binding ProcessSearch, UpdateSourceTrigger=PropertyChanged, Delay=250}"
+                                    AutomationProperties.Name="Buscar processo" />
+                        <ui:ToggleSwitch Content="Só os que estão pesando" IsChecked="{Binding OnlyHeavy}" Margin="0,0,16,8" VerticalAlignment="Center" />
+                        <ui:ToggleSwitch Content="Atualizar a cada 3 s" IsChecked="{Binding AutoRefresh}" Margin="0,0,16,8" VerticalAlignment="Center" />
+                        <ui:Button Content="Medir e reordenar" Icon="{ui:SymbolIcon ArrowSort24}" Command="{Binding RefreshProcessesCommand}" Margin="0,0,0,8" />
+                    </WrapPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="{Binding ProcessSummary}" Style="{StaticResource Caption}" Margin="0,0,0,8" TextWrapping="Wrap" />
+                    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Caption}" Margin="0,0,0,8" TextWrapping="Wrap"
+                               Text="Finalizar fecha o programa na hora (o que não foi salvo nele se perde). &quot;Baixar prioridade&quot; deixa o programa rodando, mas ele passa a ceder o processador para o que você está usando — é desfeito ao clicar de novo ou quando o programa reabre." />
+
+                    <DataGrid ItemsSource="{Binding ProcessesView}" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column"
+                              GridLinesVisibility="None" SelectionMode="Single" IsReadOnly="True"
+                              EnableRowVirtualization="True" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                              AutomationProperties.Name="Processos">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="Programa" Width="2*" MinWidth="220" SortMemberPath="DisplayName">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate DataType="{x:Type vm:ProcessRowViewModel}">
+                                        <StackPanel ToolTip="{Binding Path}">
+                                            <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Style="{StaticResource Caption}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap">
+                                                <Run Text="{Binding Name, Mode=OneWay}" /><Run Text=".exe · " /><Run Text="{Binding Subtitle, Mode=OneWay}" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Situação" Width="120" SortMemberPath="IsHeavy">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate DataType="{x:Type vm:ProcessRowViewModel}">
+                                        <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" TextWrapping="Wrap">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock" BasedOn="{StaticResource Caption}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsHeavy}" Value="True">
+                                                            <Setter Property="Foreground" Value="{StaticResource RiskReviewBrush}" />
+                                                            <Setter Property="FontWeight" Value="SemiBold" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="CPU" Binding="{Binding CpuText}" SortMemberPath="Cpu" Width="64" />
+                            <DataGridTextColumn Header="Memória" Binding="{Binding MemoryText}" SortMemberPath="Memory" Width="90" />
+                            <DataGridTextColumn Header="Disco" Binding="{Binding DiskText}" SortMemberPath="Disk" Width="90" />
+                            <DataGridTextColumn Header="Prioridade" Binding="{Binding PriorityText}" Width="115" />
+                            <DataGridTemplateColumn Header="" Width="290">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate DataType="{x:Type vm:ProcessRowViewModel}">
+                                        <StackPanel Orientation="Horizontal" Visibility="{Binding CanAct, Converter={StaticResource BoolToVis}}">
+                                            <ui:Button Content="Finalizar" Icon="{ui:SymbolIcon Dismiss16}" Appearance="Transparent" Padding="6,2"
+                                                       Command="{Binding DataContext.KillProcessCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                       CommandParameter="{Binding}" ToolTip="Fecha o programa (o que não foi salvo se perde)" />
+                                            <ui:Button Appearance="Transparent" Padding="6,2"
+                                                       Command="{Binding DataContext.LowerPriorityCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                       CommandParameter="{Binding}">
+                                                <ui:Button.Style>
+                                                    <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
+                                                        <Setter Property="Content" Value="Baixar prioridade" />
+                                                        <Setter Property="ToolTip" Value="Deixa o programa rodando, mas cedendo o processador para os outros" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsLowered}" Value="True">
+                                                                <Setter Property="Content" Value="Prioridade normal" />
+                                                                <Setter Property="ToolTip" Value="Volta a prioridade para Normal" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </ui:Button.Style>
+                                            </ui:Button>
+                                            <ui:Button Icon="{ui:SymbolIcon FolderOpen24}" Appearance="Transparent" Padding="6,2"
+                                                       Command="{Binding DataContext.OpenProcessLocationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                       CommandParameter="{Binding}" ToolTip="Abrir o local do programa" AutomationProperties.Name="Abrir local" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+
+            <!-- ================= INICIALIZAÇÃO ================= -->
+            <TabItem Header="Inicialização">
+                <DockPanel Margin="0,8,0,0">
+                    <TextBlock DockPanel.Dock="Top" Text="{Binding StartupSummary}" Style="{StaticResource BodyText}" Margin="0,0,0,8" TextWrapping="Wrap" />
+                    <DataGrid ItemsSource="{Binding StartupItems}" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column"
+                              GridLinesVisibility="None" SelectionMode="Single" EnableRowVirtualization="True"
+                              AutomationProperties.Name="Programas de inicialização">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="Ativo" Width="80">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate DataType="{x:Type vm:StartupItemViewModel}">
+                                        <ui:ToggleSwitch IsChecked="{Binding IsEnabled, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center"
+                                                         AutomationProperties.Name="{Binding Name}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Programa" Width="2*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate DataType="{x:Type vm:StartupItemViewModel}">
+                                        <StackPanel ToolTip="{Binding Command}">
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Publisher}" Style="{StaticResource Caption}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="O programa não existe mais (pode ser desativado)" Style="{StaticResource Caption}"
+                                                       Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                                                       Visibility="{Binding IsBroken, Converter={StaticResource BoolToVis}}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Onde está configurado" Binding="{Binding Source}" Width="2*" />
+                            <DataGridTemplateColumn Header="" Width="50">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate DataType="{x:Type vm:StartupItemViewModel}">
+                                        <ui:Button Icon="{ui:SymbolIcon FolderOpen24}" Appearance="Transparent" ToolTip="Abrir local do arquivo"
+                                                   Command="{Binding DataContext.OpenItemLocationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                   CommandParameter="{Binding}" AutomationProperties.Name="Abrir local do arquivo" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+
+            <!-- ================= AJUSTES ================= -->
+            <TabItem Header="Ajustes">
+                <DockPanel Margin="0,8,0,0">
+                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
+                            <ui:Button Content="Aplicar todos" Icon="{ui:SymbolIcon Checkmark24}" Appearance="Primary"
+                                       Command="{Binding ApplyAllTweaksCommand}" Margin="12,0,8,0" />
+                            <ui:Button Content="Desfazer todos" Icon="{ui:SymbolIcon ArrowUndo24}" Command="{Binding RevertAllTweaksCommand}" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding TweaksSummary}" Style="{StaticResource BodyText}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                    </DockPanel>
+                    <ItemsControl ItemsSource="{Binding Tweaks}" AutomationProperties.Name="Ajustes de desempenho">
+                        <ItemsControl.Template>
+                            <ControlTemplate TargetType="ItemsControl">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <ItemsPresenter />
+                                </ScrollViewer>
+                            </ControlTemplate>
+                        </ItemsControl.Template>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:TweakRowViewModel}">
+                                <Border Style="{StaticResource CardBorder}" Margin="0,0,0,8" Padding="14,10">
+                                    <DockPanel>
+                                        <ui:ToggleSwitch DockPanel.Dock="Right" IsChecked="{Binding IsApplied, UpdateSourceTrigger=PropertyChanged}"
+                                                         VerticalAlignment="Center" Margin="12,0,0,0" AutomationProperties.Name="{Binding Name}" />
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Style="{StaticResource BodyText}" />
+                                            <TextBlock Text="{Binding Description}" Style="{StaticResource Caption}" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding WhenItApplies}" Style="{StaticResource Caption}" Margin="0,2,0,0"
+                                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </DockPanel>
+            </TabItem>
+
+            <!-- ================= ENERGIA ================= -->
+            <TabItem Header="Energia">
+                <StackPanel Margin="0,12,0,0" MaxWidth="720" HorizontalAlignment="Left">
+                    <TextBlock Text="Plano de energia" Style="{StaticResource SectionTitle}" />
+                    <TextBlock Style="{StaticResource Caption}" Margin="0,0,0,8" TextWrapping="Wrap"
+                               Text="&quot;Alto desempenho&quot; mantém o processador sempre pronto (gasta mais energia). Em notebooks, prefira &quot;Equilibrado&quot;. &quot;Economia de energia&quot; limita o processador." />
+                    <ComboBox ItemsSource="{Binding PowerPlans}" SelectedItem="{Binding SelectedPowerPlan}" DisplayMemberPath="Name" Width="320"
+                              HorizontalAlignment="Left" AutomationProperties.Name="Plano de energia" />
+                    <TextBlock Text="Hibernação e Inicialização Rápida" Style="{StaticResource SectionTitle}" Margin="0,20,0,8" />
+                    <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap"
+                               Text="Para liberar o espaço do hiberfil.sys, use &quot;Desativar hibernação&quot; ou &quot;Reduzir hibernação&quot; na tela Limpeza (categoria Avançado)." />
+                </StackPanel>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</UserControl>

@@ -1,0 +1,210 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+                    xmlns:conv="clr-namespace:Headroom.App.Converters">
+
+    <conv:BytesConverter x:Key="Bytes" />
+    <conv:CountConverter x:Key="Count" />
+    <conv:PercentConverter x:Key="Percent" />
+    <conv:DateConverter x:Key="Date" />
+    <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
+    <conv:NullToVisibilityConverter x:Key="NullToVis" />
+    <conv:InverseBoolConverter x:Key="Not" />
+    <conv:CategoryBrushConverter x:Key="CategoryBrush" />
+    <conv:CategoryNameConverter x:Key="CategoryName" />
+    <conv:IndentConverter x:Key="Indent" Step="18" />
+    <conv:EnumEqualsConverter x:Key="EnumEquals" />
+
+    <!-- Cores de risco das regras de limpeza -->
+    <SolidColorBrush x:Key="RiskSafeBrush" Color="#2F9E44" />
+    <SolidColorBrush x:Key="RiskReviewBrush" Color="#E67700" />
+    <SolidColorBrush x:Key="RiskAdvancedBrush" Color="#E03131" />
+
+    <Style x:Key="PageTitle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="26" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+        <Setter Property="Margin" Value="0,4,0,4" />
+    </Style>
+
+    <Style x:Key="PageSubtitle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="Margin" Value="0,0,0,16" />
+    </Style>
+
+    <Style x:Key="SectionTitle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="18" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+        <Setter Property="Margin" Value="0,8,0,8" />
+    </Style>
+
+    <Style x:Key="Caption" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <Style x:Key="BodyText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <Style x:Key="StatValue" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="24" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+    </Style>
+
+    <!-- Cartão simples (borda + fundo do tema) -->
+    <Style x:Key="CardBorder" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="16" />
+    </Style>
+
+    <!-- Selo pequeno (ex.: tipo de disco, risco) -->
+    <Style x:Key="Pill" TargetType="Border">
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Padding" Value="8,1" />
+        <Setter Property="Margin" Value="6,0,0,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Background" Value="{DynamicResource ControlAltFillColorSecondaryBrush}" />
+    </Style>
+
+    <!-- Barra de uso fina -->
+    <Style x:Key="UsageBar" TargetType="ProgressBar" BasedOn="{StaticResource {x:Type ProgressBar}}">
+        <Setter Property="Height" Value="6" />
+        <Setter Property="MinHeight" Value="6" />
+        <Setter Property="Minimum" Value="0" />
+        <Setter Property="Maximum" Value="1" />
+    </Style>
+
+    <!--
+        Menu de contexto comum das listas de arquivos/pastas. O DataContext do controle (PlacementTarget)
+        é o ViewModel da página, que herda de FileActionsViewModel; o parâmetro são os itens selecionados.
+    -->
+    <ContextMenu x:Key="FileContextMenu" x:Shared="False">
+        <MenuItem Header="Abrir no Explorer"
+                  Command="{Binding PlacementTarget.DataContext.OpenInExplorerCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                  CommandParameter="{Binding PlacementTarget.SelectedItems, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+            <MenuItem.Icon>
+                <ui:SymbolIcon Symbol="FolderOpen24" />
+            </MenuItem.Icon>
+        </MenuItem>
+        <MenuItem Header="Copiar caminho"
+                  Command="{Binding PlacementTarget.DataContext.CopyPathCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                  CommandParameter="{Binding PlacementTarget.SelectedItems, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+            <MenuItem.Icon>
+                <ui:SymbolIcon Symbol="Copy24" />
+            </MenuItem.Icon>
+        </MenuItem>
+        <MenuItem Header="Propriedades"
+                  Command="{Binding PlacementTarget.DataContext.ShowPropertiesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                  CommandParameter="{Binding PlacementTarget.SelectedItems, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+            <MenuItem.Icon>
+                <ui:SymbolIcon Symbol="Info24" />
+            </MenuItem.Icon>
+        </MenuItem>
+        <Separator />
+        <MenuItem Header="Mover para a Lixeira"
+                  Command="{Binding PlacementTarget.DataContext.MoveToRecycleBinCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                  CommandParameter="{Binding PlacementTarget.SelectedItems, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+            <MenuItem.Icon>
+                <ui:SymbolIcon Symbol="Delete24" />
+            </MenuItem.Icon>
+        </MenuItem>
+        <MenuItem Header="Excluir permanentemente…"
+                  Command="{Binding PlacementTarget.DataContext.DeletePermanentlyCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                  CommandParameter="{Binding PlacementTarget.SelectedItems, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+            <MenuItem.Icon>
+                <ui:SymbolIcon Symbol="DeleteDismiss24" Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
+            </MenuItem.Icon>
+        </MenuItem>
+    </ContextMenu>
+
+    <!-- Caixa de marcação nas linhas das listas de arquivos -->
+    <Style x:Key="RowCheckBox" TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="ToolTip" Value="Marcar para excluir" />
+    </Style>
+
+    <!-- Barra de ações dos itens marcados (DataContext: FileActionsViewModel) -->
+    <DataTemplate x:Key="CheckedActionBar">
+        <Border Style="{StaticResource CardBorder}" Padding="12,8">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <ui:Button Content="Mover para a Lixeira" Icon="{ui:SymbolIcon Delete24}" Appearance="Primary"
+                               Command="{Binding DeleteCheckedToRecycleBinCommand}" Margin="0,0,8,0"
+                               ToolTip="Move os itens marcados para a Lixeira (dá para restaurar depois)" />
+                    <ui:Button Content="Excluir permanentemente…" Icon="{ui:SymbolIcon DeleteDismiss24}" Appearance="Danger"
+                               Command="{Binding DeleteCheckedPermanentlyCommand}"
+                               ToolTip="Apaga os itens marcados sem passar pela Lixeira (pede confirmação)" />
+                </StackPanel>
+                <WrapPanel VerticalAlignment="Center">
+                    <ui:SymbolIcon Symbol="CheckboxChecked24" Margin="0,0,8,0" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+                    <TextBlock Text="{Binding CheckedText}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,12,0" />
+                    <ui:Button Content="{Binding CheckAllLabel}" Appearance="Transparent" Command="{Binding CheckAllCommand}" Padding="8,4"
+                               Visibility="{Binding CanCheckAll, Converter={StaticResource BoolToVis}}" />
+                    <ui:Button Content="Desmarcar" Appearance="Transparent" Command="{Binding UncheckAllCommand}" Padding="8,4" />
+                    <TextBlock Text="{Binding CheckHint}" Style="{StaticResource Caption}" VerticalAlignment="Center" Margin="12,0,0,0" />
+                </WrapPanel>
+            </DockPanel>
+        </Border>
+    </DataTemplate>
+
+    <!-- Cartão marcável (CheckBox) usado na escolha de discos: vários podem ser marcados -->
+    <Style x:Key="SelectableCard" TargetType="CheckBox">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Focusable" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CheckBox">
+                    <Border x:Name="Card"
+                            Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="16">
+                        <Grid>
+                            <ContentPresenter />
+                            <!-- Indicador de marcado no canto superior direito -->
+                            <Border x:Name="Mark" Width="22" Height="22" CornerRadius="4" BorderThickness="1"
+                                    HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-6,-6,0"
+                                    BorderBrush="{DynamicResource ControlStrongStrokeColorDefaultBrush}"
+                                    Background="{DynamicResource ControlAltFillColorSecondaryBrush}">
+                                <ui:SymbolIcon x:Name="MarkIcon" Symbol="Checkmark16" FontSize="14" Visibility="Collapsed"
+                                               Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}" />
+                            </Border>
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Card" Property="Background" Value="{DynamicResource CardBackgroundFillColorSecondaryBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Card" Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                            <Setter TargetName="Card" Property="BorderThickness" Value="2" />
+                            <Setter TargetName="Mark" Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                            <Setter TargetName="Mark" Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                            <Setter TargetName="MarkIcon" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Card" Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+</ResourceDictionary>

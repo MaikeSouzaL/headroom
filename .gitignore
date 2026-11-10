@@ -1,0 +1,12 @@
+bin/
+obj/
+artifacts/
+TestResults/
+.vs/
+*.user
+*.suo
+
+# Dados locais (memória de ferramentas, análises salvas)
+.memoria/
+*.hrscan
+*.dlscan

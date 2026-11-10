@@ -1,0 +1,99 @@
+<UserControl x:Class="Headroom.App.Views.TreemapView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:vm="clr-namespace:Headroom.App.ViewModels"
+             xmlns:controls="clr-namespace:Headroom.App.Controls"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance vm:TreemapViewModel}">
+    <DockPanel Margin="4,0,4,8">
+        <StackPanel DockPanel.Dock="Top">
+            <TextBlock Text="Mapa de espaço" Style="{StaticResource PageTitle}" />
+            <TextBlock Text="{Binding CurrentInfo}" Style="{StaticResource PageSubtitle}" Margin="0,0,0,2" />
+            <TextBlock Text="Clique em uma pasta para entrar nela · botão direito em qualquer bloco para abrir no Explorer, mover para a Lixeira ou excluir."
+                       Style="{StaticResource Caption}" Margin="0,0,0,8" TextWrapping="Wrap" />
+
+            <!-- Breadcrumb -->
+            <DockPanel Margin="0,0,0,8">
+                <ui:Button DockPanel.Dock="Left" Icon="{ui:SymbolIcon ArrowUp24}" Content="Subir" Command="{Binding GoUpCommand}"
+                           Margin="0,0,8,0" ToolTip="Voltar para a pasta-pai" />
+                <ItemsControl ItemsSource="{Binding Breadcrumbs}" VerticalAlignment="Center"
+                              AutomationProperties.Name="Caminho atual">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:BreadcrumbItem}">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:Button Appearance="Transparent" Padding="6,2" Content="{Binding Name}"
+                                           Command="{Binding DataContext.NavigateToCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                           CommandParameter="{Binding Node}" />
+                                <ui:SymbolIcon Symbol="ChevronRight16" FontSize="11" VerticalAlignment="Center" Margin="2,0"
+                                               Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                               Visibility="{Binding IsLast, Converter={StaticResource BoolToVis}, ConverterParameter=inverse}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </DockPanel>
+        </StackPanel>
+
+        <!-- Legenda e informação do item sob o mouse -->
+        <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+            <TextBlock Text="{Binding HoverText}" Style="{StaticResource Caption}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+            <ItemsControl ItemsSource="{Binding Legend}" Margin="0,6,0,0">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:CategoryLegendItem}">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,14,0">
+                            <Border Width="12" Height="12" CornerRadius="2" Background="{Binding Color}" Margin="0,0,6,0" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Name}" Style="{StaticResource Caption}" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+
+        <Border CornerRadius="6" BorderThickness="1" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" ClipToBounds="True">
+            <controls:TreemapCanvas x:Name="Map"
+                                    RootNode="{Binding CurrentNode}"
+                                    RenderVersion="{Binding RenderVersion}"
+                                    HoveredNode="{Binding HoveredNode, Mode=OneWayToSource}"
+                                    ContextNode="{Binding ContextNode, Mode=TwoWay}"
+                                    NavigateCommand="{Binding NavigateToCommand}"
+                                    AutomationProperties.Name="Mapa de espaço (treemap)">
+                <controls:TreemapCanvas.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Entrar nesta pasta"
+                                  Command="{Binding PlacementTarget.DataContext.OpenContextFolderCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                        <Separator />
+                        <MenuItem Header="Abrir no Explorer"
+                                  Command="{Binding PlacementTarget.DataContext.OpenInExplorerCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                  CommandParameter="{Binding PlacementTarget.ContextNode, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                        <MenuItem Header="Copiar caminho"
+                                  Command="{Binding PlacementTarget.DataContext.CopyPathCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                  CommandParameter="{Binding PlacementTarget.ContextNode, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                        <MenuItem Header="Propriedades"
+                                  Command="{Binding PlacementTarget.DataContext.ShowPropertiesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                  CommandParameter="{Binding PlacementTarget.ContextNode, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                        <Separator />
+                        <MenuItem Header="Mover para a Lixeira"
+                                  Command="{Binding PlacementTarget.DataContext.MoveToRecycleBinCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                  CommandParameter="{Binding PlacementTarget.ContextNode, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                        <MenuItem Header="Excluir permanentemente…"
+                                  Command="{Binding PlacementTarget.DataContext.DeletePermanentlyCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                  CommandParameter="{Binding PlacementTarget.ContextNode, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                    </ContextMenu>
+                </controls:TreemapCanvas.ContextMenu>
+            </controls:TreemapCanvas>
+        </Border>
+    </DockPanel>
+</UserControl>

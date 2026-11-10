@@ -1,0 +1,114 @@
+<UserControl x:Class="Headroom.App.Views.RepairsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:vm="clr-namespace:Headroom.App.ViewModels"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance vm:RepairsViewModel}">
+    <DockPanel Margin="4,0,4,8">
+        <StackPanel DockPanel.Dock="Top">
+            <TextBlock Text="Reparos" Style="{StaticResource PageTitle}" />
+            <TextBlock Style="{StaticResource PageSubtitle}" Margin="0,0,0,12"
+                       Text="Ferramentas oficiais do Windows para corrigir erros. Cada uma pede confirmação; as que mexem no sistema criam um ponto de restauração antes." />
+            <ui:InfoBar Title="Sem privilégios de administrador" IsOpen="True" IsClosable="True" Severity="Warning" Margin="0,0,0,8"
+                        Message="A maioria dos reparos exige administrador. Use &quot;Reiniciar como administrador&quot; no menu lateral."
+                        Visibility="{Binding IsAdministrator, Converter={StaticResource BoolToVis}, ConverterParameter=inverse}" />
+        </StackPanel>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="3*" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="2*" />
+            </Grid.ColumnDefinitions>
+
+            <ListBox ItemsSource="{Binding RepairsView}" SelectedItem="{Binding Selected}" Background="Transparent" BorderThickness="0"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled" VirtualizingPanel.ScrollUnit="Pixel"
+                     AutomationProperties.Name="Lista de reparos">
+                <ListBox.GroupStyle>
+                    <GroupStyle>
+                        <GroupStyle.HeaderTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Name}" Style="{StaticResource SectionTitle}" Margin="0,8,0,4" />
+                            </DataTemplate>
+                        </GroupStyle.HeaderTemplate>
+                    </GroupStyle>
+                </ListBox.GroupStyle>
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="Margin" Value="0,0,0,6" />
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:RepairItemViewModel}">
+                        <Border Padding="12" CornerRadius="8" BorderThickness="1" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsHighlighted}" Value="True">
+                                            <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <DockPanel>
+                                <ui:Button DockPanel.Dock="Right" Content="Executar" Icon="{ui:SymbolIcon Play24}" VerticalAlignment="Top" Margin="12,0,0,0"
+                                           Command="{Binding DataContext.RunCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                           CommandParameter="{Binding}" />
+                                <StackPanel>
+                                    <WrapPanel>
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Style="{StaticResource BodyText}" Margin="0,0,4,0" />
+                                        <Border Style="{StaticResource Pill}" Background="{Binding RiskBrush}">
+                                            <TextBlock Text="{Binding RiskText}" FontSize="11" Foreground="White" />
+                                        </Border>
+                                        <Border Style="{StaticResource Pill}" Visibility="{Binding RequiresAdmin, Converter={StaticResource BoolToVis}}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <ui:SymbolIcon Symbol="Shield24" FontSize="11" Margin="0,0,3,0" />
+                                                <TextBlock Text="Admin" FontSize="11" />
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Style="{StaticResource Pill}" Visibility="{Binding RequiresReboot, Converter={StaticResource BoolToVis}}">
+                                            <TextBlock Text="Reinício" FontSize="11" />
+                                        </Border>
+                                    </WrapPanel>
+                                    <TextBlock Text="{Binding Description}" Style="{StaticResource Caption}" Margin="0,2,0,0" />
+                                    <TextBlock Text="{Binding Duration}" Style="{StaticResource Caption}" FontStyle="Italic"
+                                               Visibility="{Binding Duration, Converter={StaticResource NullToVis}}" />
+                                    <TextBlock Text="{Binding LastResult}" Style="{StaticResource Caption}" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
+                                               Visibility="{Binding LastResult, Converter={StaticResource NullToVis}}" />
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <Border Grid.Column="2" Style="{StaticResource CardBorder}" Padding="12">
+                <DockPanel>
+                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                            <ui:Button Content="Cancelar" Icon="{ui:SymbolIcon Dismiss24}" Command="{Binding CancelCommand}" Margin="0,0,8,0"
+                                       Visibility="{Binding IsRunning, Converter={StaticResource BoolToVis}}" />
+                            <ui:Button Icon="{ui:SymbolIcon Copy24}" ToolTip="Copiar a saída" Command="{Binding CopyOutputCommand}"
+                                       AutomationProperties.Name="Copiar a saída" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Text="Saída" Style="{StaticResource SectionTitle}" Margin="0" />
+                            <TextBlock Text="{Binding CurrentName}" Style="{StaticResource Caption}" />
+                        </StackPanel>
+                    </DockPanel>
+                    <ProgressBar DockPanel.Dock="Top" IsIndeterminate="True" Height="4" Margin="0,0,0,8"
+                                 Visibility="{Binding IsRunning, Converter={StaticResource BoolToVis}}" />
+                    <TextBox x:Name="Output" Text="{Binding OutputText, Mode=OneWay}" IsReadOnly="True" FontFamily="Cascadia Mono, Consolas"
+                             FontSize="12" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" AcceptsReturn="True"
+                             TextChanged="OnOutputChanged" AutomationProperties.Name="Saída do reparo" />
+                </DockPanel>
+            </Border>
+        </Grid>
+    </DockPanel>
+</UserControl>

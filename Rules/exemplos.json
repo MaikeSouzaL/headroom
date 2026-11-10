@@ -1,0 +1,75 @@
+// Regras declarativas do Headroom (estilo CleanerML do BleachBit).
+// Coloque arquivos .json nesta pasta ou em %LOCALAPPDATA%\Headroom\Rules e clique em
+// "Recarregar regras" na tela Limpeza. Uma regra JSON com o mesmo "id" de uma embutida a substitui.
+//
+// Campos:
+//   id, name, description         obrigatórios (id e name)
+//   category                      System | Browsers | Applications | Games | Developer | UserFiles | Privacy | Advanced
+//   risk                          Safe | Review | Advanced
+//   requiresAdmin                 true/false
+//   enabledByDefault              marcada no perfil Rápida/Completa
+//   itemsSelectedByDefault        false = o usuário escolhe item a item na prévia
+//   processesToClose              ["app.exe"]; requiresProcessesClosed = pular se estiver aberto
+//   servicesToStop                serviços parados antes e reiniciados depois
+//   detect                        caminhos que indicam que o app está instalado
+//   targets[]                     path (com %VARIÁVEIS% e curingas), mode (Contents | Self | Children),
+//                                 pattern, recursive, minAgeDays, extensions, exclude, minSize
+//   command                       { "file": "...", "arguments": "...", "timeoutSeconds": 600 } executado depois
+//
+// Variáveis extras: %STEAM%, %STEAMLIBS%, %DROPBOX%, %ANDROIDSDK%, %USERPROFILES%, %DESKTOP%,
+// %DOCUMENTS%, %DOWNLOADS%, %PICTURES%, %VIDEOS%, %MUSIC%, %STARTMENU%, %LOCALLOW%.
+// A lista negra do Headroom continua valendo: regras JSON nunca conseguem apagar System32,
+// WinSxS, perfis de navegador (fora do cache), raiz de discos etc.
+[
+  {
+    "id": "exemplo.notepadpp.backup",
+    "name": "Notepad++: backups de sessão antigos",
+    "description": "Cópias de segurança de arquivos não salvos do Notepad++ com mais de 30 dias.",
+    "category": "Applications",
+    "risk": "Review",
+    "enabledByDefault": false,
+    "processesToClose": [ "notepad++.exe" ],
+    "detect": [ "%APPDATA%\\Notepad++" ],
+    "targets": [
+      { "path": "%APPDATA%\\Notepad++\\backup", "minAgeDays": 30 }
+    ]
+  },
+  {
+    "id": "exemplo.paintnet.cache",
+    "name": "Paint.NET: cache e logs",
+    "description": "Cache de efeitos e logs do Paint.NET.",
+    "category": "Applications",
+    "risk": "Safe",
+    "detect": [ "%LOCALAPPDATA%\\paint.net" ],
+    "targets": [
+      { "path": "%LOCALAPPDATA%\\paint.net\\Cache" },
+      { "path": "%LOCALAPPDATA%\\paint.net", "pattern": "*.log", "recursive": false }
+    ]
+  },
+  {
+    "id": "exemplo.minecraft.logs",
+    "name": "Minecraft: logs e relatórios de falha antigos",
+    "description": "Logs compactados e crash-reports do Minecraft Java com mais de 14 dias.",
+    "category": "Games",
+    "risk": "Safe",
+    "detect": [ "%APPDATA%\\.minecraft" ],
+    "targets": [
+      { "path": "%APPDATA%\\.minecraft\\logs", "minAgeDays": 14, "extensions": [ ".gz", ".log" ] },
+      { "path": "%APPDATA%\\.minecraft\\crash-reports", "minAgeDays": 14 }
+    ]
+  },
+  {
+    "id": "exemplo.screenrecorder.temp",
+    "name": "ShareX: capturas temporárias",
+    "description": "Arquivos temporários e de histórico de capturas do ShareX com mais de 60 dias.",
+    "category": "Applications",
+    "risk": "Review",
+    "enabledByDefault": false,
+    "itemsSelectedByDefault": false,
+    "detect": [ "%DOCUMENTS%\\ShareX" ],
+    "targets": [
+      { "path": "%DOCUMENTS%\\ShareX\\Screenshots", "minAgeDays": 60 },
+      { "path": "%DOCUMENTS%\\ShareX\\Logs", "minAgeDays": 30 }
+    ]
+  }
+]

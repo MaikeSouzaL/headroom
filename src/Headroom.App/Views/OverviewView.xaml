@@ -1,0 +1,166 @@
+<UserControl x:Class="Headroom.App.Views.OverviewView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
+             xmlns:vm="clr-namespace:Headroom.App.ViewModels"
+             xmlns:scan="clr-namespace:Headroom.Core.Scanning;assembly=Headroom.Core"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance vm:OverviewViewModel}">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="4,0,4,24">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <ui:Button Icon="{ui:SymbolIcon DocumentText24}" Content="Exportar HTML" Command="{Binding ExportHtmlCommand}" Margin="0,0,8,0" />
+                    <ui:Button Icon="{ui:SymbolIcon DocumentTable24}" Content="Exportar CSV" Command="{Binding ExportCsvCommand}" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Text="Visão geral" Style="{StaticResource PageTitle}" />
+                    <TextBlock Text="{Binding RootPath}" Style="{StaticResource PageSubtitle}" Margin="0,0,0,12" />
+                </StackPanel>
+            </DockPanel>
+
+            <!-- Cards -->
+            <UniformGrid Columns="4" Margin="-6,0,-6,0">
+                <Border Style="{StaticResource CardBorder}" Margin="6">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="HardDrive20" Margin="0,0,8,0" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+                            <TextBlock Text="Total escaneado" Style="{StaticResource Caption}" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding TotalText}" Style="{StaticResource StatValue}" Margin="0,6,0,0" />
+                        <TextBlock Text="{Binding FoldersText}" Style="{StaticResource Caption}" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource CardBorder}" Margin="6">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="Storage24" Margin="0,0,8,0" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+                            <TextBlock Text="Livre" Style="{StaticResource Caption}" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding FreeText}" Style="{StaticResource StatValue}" Margin="0,6,0,0" />
+                        <TextBlock Text="{Binding FreeCaption}" Style="{StaticResource Caption}" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource CardBorder}" Margin="6">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="Document24" Margin="0,0,8,0" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+                            <TextBlock Text="Arquivos" Style="{StaticResource Caption}" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding FilesText}" Style="{StaticResource StatValue}" Margin="0,6,0,0" />
+                        <TextBlock Text="encontrados no scan" Style="{StaticResource Caption}" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource CardBorder}" Margin="6">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="Broom24" Margin="0,0,8,0" Foreground="{DynamicResource SystemFillColorSuccessBrush}" />
+                            <TextBlock Text="Espaço recuperável estimado" Style="{StaticResource Caption}" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding RecoverableText}" Style="{StaticResource StatValue}" Margin="0,6,0,0" />
+                        <ui:HyperlinkButton Content="Ir para a Limpeza" Command="{Binding GoToCleanupCommand}" Padding="0,2" />
+                    </StackPanel>
+                </Border>
+            </UniformGrid>
+
+            <!-- Informações do scan -->
+            <ui:InfoBar Title="Scan concluído" Message="{Binding ScanInfoText}" Severity="Success" IsOpen="True"
+                        IsClosable="False" Margin="0,12,0,0" />
+            <ui:InfoBar Title="Por que o total é diferente do espaço usado?" Message="{Binding DifferenceText}"
+                        Severity="Informational" IsOpen="True" IsClosable="True" Margin="0,8,0,0" />
+
+            <!-- Gráficos -->
+            <Grid Margin="0,12,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="5*" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="6*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Style="{StaticResource CardBorder}">
+                    <StackPanel>
+                        <TextBlock Text="Espaço por categoria" Style="{StaticResource SectionTitle}" Margin="0,0,0,8" />
+                        <lvc:PieChart Background="Transparent" Series="{Binding CategorySeries}" Height="260" LegendPosition="Hidden"
+                                      TooltipTextPaint="{Binding TooltipTextPaint}"
+                                      TooltipBackgroundPaint="{Binding TooltipBackgroundPaint}"
+                                      AutomationProperties.Name="Gráfico de rosca do espaço por categoria" />
+                        <ItemsControl ItemsSource="{Binding Legend}" Margin="0,12,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:CategoryLegendItem}">
+                                    <Grid Margin="0,3">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="20" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="70" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Width="12" Height="12" CornerRadius="3" Background="{Binding Color}" VerticalAlignment="Center" />
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="{Binding Name}" Style="{StaticResource BodyText}" />
+                                            <TextBlock Text="{Binding CountText}" Style="{StaticResource Caption}" />
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="2" Text="{Binding SizeText}" Style="{StaticResource BodyText}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="3" Text="{Binding PercentText}" Style="{StaticResource Caption}" TextAlignment="Right" VerticalAlignment="Center" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Column="2" Style="{StaticResource CardBorder}">
+                    <StackPanel>
+                        <DockPanel Margin="0,0,0,8">
+                            <ui:HyperlinkButton DockPanel.Dock="Right" Content="Ver no mapa" Command="{Binding GoToTreemapCommand}" />
+                            <TextBlock Text="As 15 maiores pastas de primeiro nível" Style="{StaticResource SectionTitle}" Margin="0" VerticalAlignment="Center" />
+                        </DockPanel>
+                        <lvc:CartesianChart Background="Transparent" Series="{Binding TopFolderSeries}" YAxes="{Binding TopFolderYAxes}"
+                                            XAxes="{Binding TopFolderXAxes}" Height="{Binding TopFoldersChartHeight}"
+                                            LegendPosition="Hidden"
+                                            TooltipTextPaint="{Binding TooltipTextPaint}"
+                                            TooltipBackgroundPaint="{Binding TooltipBackgroundPaint}"
+                                            AutomationProperties.Name="Gráfico de barras das maiores pastas" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Recuperável e artefatos -->
+            <Grid Margin="0,16,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0" Style="{StaticResource CardBorder}">
+                    <StackPanel>
+                        <TextBlock Text="Onde está o espaço recuperável" Style="{StaticResource SectionTitle}" Margin="0,0,0,8" />
+                        <TextBlock Text="Nada encontrado nos locais conhecidos de temporários e caches." Style="{StaticResource Caption}"
+                                   Visibility="{Binding HasRecoverable, Converter={StaticResource BoolToVis}, ConverterParameter=inverse}" />
+                        <ItemsControl ItemsSource="{Binding Recoverable}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type scan:RecoverableItem}">
+                                    <DockPanel Margin="0,3" ToolTip="{Binding Path}">
+                                        <TextBlock DockPanel.Dock="Right" Text="{Binding Bytes, Converter={StaticResource Bytes}}" FontWeight="SemiBold" Style="{StaticResource BodyText}" />
+                                        <TextBlock Text="{Binding Label}" Style="{StaticResource BodyText}" TextTrimming="CharacterEllipsis" />
+                                    </DockPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+                <Border Grid.Column="2" Style="{StaticResource CardBorder}">
+                    <StackPanel>
+                        <TextBlock Text="Artefatos de desenvolvimento" Style="{StaticResource SectionTitle}" Margin="0,0,0,8" />
+                        <TextBlock Text="{Binding DevArtifactsText}" Style="{StaticResource BodyText}" />
+                        <ui:Button Content="Revisar na Limpeza (projetos parados)" Icon="{ui:SymbolIcon Code24}" Margin="0,12,0,0"
+                                   Command="{Binding GoToCleanupCommand}"
+                                   Visibility="{Binding HasDevArtifacts, Converter={StaticResource BoolToVis}}" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

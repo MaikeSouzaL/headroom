@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>Headroom.App</RootNamespace>
+    <AssemblyName>Headroom</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\headroom.ico</ApplicationIcon>
+    <StartupObject>Headroom.App.Program</StartupObject>
+    <!-- NU1701: dependências do LiveCharts (SkiaSharp.Views.WPF, OpenTK) declaram só .NET Framework, mas funcionam no .NET 8. -->
+    <NoWarn>$(NoWarn);NU1701</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="LiveChartsCore.SkiaSharpView.WPF" Version="2.0.5" />
+    <PackageReference Include="WPF-UI" Version="4.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Headroom.Core\Headroom.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- O SDK do WPF não inclui System.IO nos usings implícitos. -->
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\headroom.ico" />
+    <Resource Include="Assets\headroom.png" />
+  </ItemGroup>
+
+  <!-- Regras declarativas (JSON) ficam ao lado do executável, fora do pacote single-file,
+       para que o usuário possa editar/adicionar regras sem recompilar. -->
+  <ItemGroup>
+    <None Include="..\..\Rules\**\*.json" LinkBase="Rules">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </None>
+  </ItemGroup>
+
+</Project>

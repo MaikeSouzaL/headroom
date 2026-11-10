@@ -1,0 +1,281 @@
+<UserControl x:Class="Headroom.App.Views.ProgramsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:vm="clr-namespace:Headroom.App.ViewModels"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance vm:ProgramsViewModel}">
+    <DockPanel Margin="4,0,4,8">
+        <DockPanel DockPanel.Dock="Top">
+            <ui:ProgressRing DockPanel.Dock="Right" IsIndeterminate="True" Width="22" Height="22" VerticalAlignment="Center"
+                             Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}" />
+            <StackPanel>
+                <TextBlock Text="Programas" Style="{StaticResource PageTitle}" />
+                <TextBlock Style="{StaticResource PageSubtitle}" Margin="0,0,0,10"
+                           Text="Programas instalados com o tamanho real, desinstalação completa (remove pastas, atalhos, registro e tarefas que sobram), apps da Microsoft Store, recursos opcionais e restos antigos." />
+            </StackPanel>
+        </DockPanel>
+
+        <TabControl SelectedIndex="{Binding SelectedTab}">
+            <TabItem Header="Instalados">
+                <DockPanel Margin="0,8,0,0">
+                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                            <ui:Button Content="Desinstalar" Icon="{ui:SymbolIcon Delete24}" Command="{Binding UninstallCommand}" Margin="8,0,0,0" />
+                            <ui:Button Content="Atualizar" Icon="{ui:SymbolIcon ArrowClockwise24}" Command="{Binding LoadProgramsCommand}" Margin="8,0,0,0" />
+                        </StackPanel>
+                        <ui:TextBox PlaceholderText="Buscar programa ou fabricante…" Icon="{ui:SymbolIcon Search24}" Width="320" HorizontalAlignment="Left"
+                                    Text="{Binding Search, UpdateSourceTrigger=PropertyChanged, Delay=200}" AutomationProperties.Name="Buscar programas" />
+                    </DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="{Binding StatusText}" Style="{StaticResource Caption}" Margin="0,0,0,8" />
+                    <DataGrid ItemsSource="{Binding Programs}" SelectedItem="{Binding SelectedProgram}" AutoGenerateColumns="False" IsReadOnly="True"
+                              HeadersVisibility="Column" GridLinesVisibility="None" SelectionMode="Single" EnableRowVirtualization="True"
+                              VirtualizingPanel.VirtualizationMode="Recycling" AutomationProperties.Name="Programas instalados">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="Programa" Width="2*" SortMemberPath="Name">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate DataType="{x:Type vm:ProgramRowViewModel}">
+                                        <StackPanel ToolTip="{Binding Folder}">
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Style="{StaticResource Caption}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis">
+                                                <Run Text="{Binding Publisher, Mode=OneWay}" />
+                                                <Run Text=" " />
+                                                <Run Text="{Binding Version, Mode=OneWay}" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Tamanho" Binding="{Binding SizeText}" SortMemberPath="Size" Width="110" />
+                            <DataGridTextColumn Header="Instalado em" Binding="{Binding InstallDate, Converter={StaticResource Date}, ConverterParameter=d}" SortMemberPath="InstallDate" Width="110" />
+                            <DataGridTextColumn Header="Último uso (estimado)" Binding="{Binding LastUsed, Converter={StaticResource Date}, ConverterParameter=d}" SortMemberPath="LastUsed" Width="160" />
+                            <DataGridTextColumn Header="Escopo" Binding="{Binding Scope}" Width="120" />
+                            <DataGridTemplateColumn Header="" Width="90">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate DataType="{x:Type vm:ProgramRowViewModel}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <ui:Button Icon="{ui:SymbolIcon FolderOpen24}" Appearance="Transparent" Padding="4" ToolTip="Abrir pasta"
+                                                       Command="{Binding DataContext.OpenProgramFolderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                       CommandParameter="{Binding}" AutomationProperties.Name="Abrir pasta do programa" />
+                                            <ui:Button Icon="{ui:SymbolIcon Delete24}" Appearance="Transparent" Padding="4" ToolTip="Desinstalar"
+                                                       Command="{Binding DataContext.UninstallCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                       CommandParameter="{Binding}" AutomationProperties.Name="Desinstalar" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+
+            <TabItem Header="Desinstalação completa">
+                <DockPanel Margin="0,8,0,0">
+                    <Border DockPanel.Dock="Top" Style="{StaticResource CardBorder}" Margin="0,0,0,8">
+                        <StackPanel>
+                            <DockPanel>
+                                <ui:ProgressRing DockPanel.Dock="Left" IsIndeterminate="True" Width="20" Height="20" Margin="0,0,10,0" VerticalAlignment="Center">
+                                    <ui:ProgressRing.Style>
+                                        <Style TargetType="ui:ProgressRing" BasedOn="{StaticResource {x:Type ui:ProgressRing}}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsWaitingUninstall}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding IsWorkingOnLeftovers}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </ui:ProgressRing.Style>
+                                </ui:ProgressRing>
+                                <TextBlock Text="{Binding UninstallTitle}" Style="{StaticResource SectionTitle}" VerticalAlignment="Center" />
+                            </DockPanel>
+                            <TextBlock Text="{Binding LeftoverStatus}" Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                            <WrapPanel Margin="0,10,0,0">
+                                <ui:Button Content="Procurar rastros agora" Icon="{ui:SymbolIcon Search24}" Command="{Binding ScanLeftoversNowCommand}" Margin="0,0,8,0" />
+                                <ui:Button Content="Parar de esperar" Icon="{ui:SymbolIcon Dismiss24}" Command="{Binding CancelUninstallWaitCommand}"
+                                           Visibility="{Binding IsWaitingUninstall, Converter={StaticResource BoolToVis}}" />
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <Border DockPanel.Dock="Top" Style="{StaticResource CardBorder}" Padding="12,8" Margin="0,0,0,8"
+                            Visibility="{Binding HasLeftovers, Converter={StaticResource BoolToVis}}">
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                <ui:Button Content="Remover marcados" Icon="{ui:SymbolIcon Delete24}" Appearance="Primary"
+                                           Command="{Binding RemoveLeftoversCommand}" />
+                            </StackPanel>
+                            <WrapPanel VerticalAlignment="Center">
+                                <ui:Button Content="Marcar recomendados" Appearance="Transparent" Padding="8,4" Command="{Binding SelectRecommendedLeftoversCommand}" />
+                                <ui:Button Content="Desmarcar" Appearance="Transparent" Padding="8,4" Command="{Binding ClearLeftoverSelectionCommand}" />
+                            </WrapPanel>
+                        </DockPanel>
+                    </Border>
+
+                    <Border DockPanel.Dock="Top" Style="{StaticResource CardBorder}" Padding="12,8" Margin="0,0,0,8"
+                            Visibility="{Binding LeftoverResult, Converter={StaticResource NullToVis}}">
+                        <DockPanel>
+                            <ui:Button DockPanel.Dock="Right" Content="Abrir log" Icon="{ui:SymbolIcon DocumentText24}" Appearance="Transparent"
+                                       Command="{Binding OpenLeftoverLogCommand}" VerticalAlignment="Top"
+                                       Visibility="{Binding HasLeftoverLog, Converter={StaticResource BoolToVis}}" />
+                            <TextBlock Text="{Binding LeftoverResult}" Style="{StaticResource BodyText}" TextWrapping="Wrap" />
+                        </DockPanel>
+                    </Border>
+
+                    <DataGrid ItemsSource="{Binding Leftovers}" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column"
+                              GridLinesVisibility="None" SelectionMode="Single" EnableRowVirtualization="True"
+                              AutomationProperties.Name="Rastros do programa desinstalado">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="" Width="44" CanUserResize="False">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate DataType="{x:Type vm:LeftoverRowViewModel}">
+                                        <CheckBox Style="{StaticResource RowCheckBox}" IsChecked="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}"
+                                                  AutomationProperties.Name="{Binding Display, StringFormat='Marcar {0} para remover'}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Tipo" Width="150" SortMemberPath="Kind">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate DataType="{x:Type vm:LeftoverRowViewModel}">
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Kind}" />
+                                            <Border Style="{StaticResource Pill}" Background="{StaticResource RiskReviewBrush}" HorizontalAlignment="Left" Margin="0,2,0,0"
+                                                    Visibility="{Binding NeedsReview, Converter={StaticResource BoolToVis}}">
+                                                <TextBlock Text="Revisar" FontSize="11" Foreground="White" />
+                                            </Border>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Onde" Width="3*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate DataType="{x:Type vm:LeftoverRowViewModel}">
+                                        <StackPanel ToolTip="{Binding Display}">
+                                            <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding Reason}" Style="{StaticResource Caption}" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Tamanho" Binding="{Binding SizeText}" SortMemberPath="Size" Width="100" IsReadOnly="True" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+
+            <TabItem Header="Apps da Store">
+                <DockPanel Margin="0,8,0,0">
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+                        <ui:Button Content="Carregar" Icon="{ui:SymbolIcon ArrowClockwise24}" Command="{Binding LoadStoreAppsCommand}" Margin="0,0,8,0" />
+                        <ui:Button Content="Marcar bloatware" Icon="{ui:SymbolIcon CheckboxChecked24}" Command="{Binding SelectBloatwareCommand}" Margin="0,0,8,0" />
+                        <ui:Button Content="Remover marcados" Icon="{ui:SymbolIcon Delete24}" Command="{Binding RemoveSelectedAppsCommand}" />
+                    </StackPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="{Binding StoreStatus}" Style="{StaticResource Caption}" Margin="0,0,0,8" />
+                    <DataGrid ItemsSource="{Binding StoreApps}" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column"
+                              GridLinesVisibility="None" EnableRowVirtualization="True" AutomationProperties.Name="Apps da Microsoft Store">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="" Width="40">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate DataType="{x:Type vm:StoreAppRowViewModel}">
+                                        <CheckBox IsChecked="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanRemove}"
+                                                  HorizontalAlignment="Center" AutomationProperties.Name="{Binding Name}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="App" Width="2*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate DataType="{x:Type vm:StoreAppRowViewModel}">
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                                                <Border Style="{StaticResource Pill}" Background="{StaticResource RiskReviewBrush}"
+                                                        Visibility="{Binding IsBloatware, Converter={StaticResource BoolToVis}}">
+                                                    <TextBlock Text="Pré-instalado" FontSize="11" Foreground="White" />
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding Package}" Style="{StaticResource Caption}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Versão" Binding="{Binding Version}" Width="140" IsReadOnly="True" />
+                            <DataGridTextColumn Header="Tamanho" Binding="{Binding SizeText}" SortMemberPath="Size" Width="110" IsReadOnly="True" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+
+            <TabItem Header="Recursos opcionais">
+                <DockPanel Margin="0,8,0,0">
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+                        <ui:Button Content="Carregar" Icon="{ui:SymbolIcon ArrowClockwise24}" Command="{Binding LoadCapabilitiesCommand}" Margin="0,0,8,0" />
+                        <ui:Button Content="Remover marcados" Icon="{ui:SymbolIcon Delete24}" Command="{Binding RemoveSelectedCapabilitiesCommand}" />
+                    </StackPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="{Binding CapabilityStatus}" Style="{StaticResource Caption}" Margin="0,0,0,8" />
+                    <DataGrid ItemsSource="{Binding Capabilities}" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column"
+                              GridLinesVisibility="None" AutomationProperties.Name="Recursos opcionais instalados">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="" Width="40">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate DataType="{x:Type vm:CapabilityRowViewModel}">
+                                        <CheckBox IsChecked="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center"
+                                                  AutomationProperties.Name="{Binding Name}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Recurso" Binding="{Binding Name}" Width="2*" IsReadOnly="True" />
+                            <DataGridTextColumn Header="Tipo" Binding="{Binding Kind}" Width="*" IsReadOnly="True" />
+                            <DataGridTemplateColumn Header="" Width="200">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate DataType="{x:Type vm:CapabilityRowViewModel}">
+                                        <TextBlock Text="Idioma não usado" Foreground="{StaticResource RiskReviewBrush}"
+                                                   Visibility="{Binding IsUnusedLanguage, Converter={StaticResource BoolToVis}}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+
+            <TabItem Header="Restos de programas">
+                <DockPanel Margin="0,8,0,0">
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+                        <ui:Button Content="Procurar" Icon="{ui:SymbolIcon Search24}" Command="{Binding FindOrphansCommand}" Margin="0,0,8,0" />
+                        <ui:Button Content="Mover marcados para a Lixeira" Icon="{ui:SymbolIcon Delete24}" Command="{Binding RemoveSelectedOrphansCommand}" />
+                    </StackPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="{Binding OrphanStatus}" Style="{StaticResource Caption}" Margin="0,0,0,8" />
+                    <DataGrid ItemsSource="{Binding Orphans}" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column"
+                              GridLinesVisibility="None" AutomationProperties.Name="Restos de programas desinstalados">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="" Width="40">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate DataType="{x:Type vm:OrphanRowViewModel}">
+                                        <CheckBox IsChecked="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center"
+                                                  AutomationProperties.Name="{Binding Name}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Pasta" Width="3*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate DataType="{x:Type vm:OrphanRowViewModel}">
+                                        <StackPanel ToolTip="{Binding Reason}">
+                                            <TextBlock Text="{Binding FullPath}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Reason}" Style="{StaticResource Caption}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Tamanho" Binding="{Binding SizeText}" Width="100" IsReadOnly="True" />
+                            <DataGridTextColumn Header="Modificado" Binding="{Binding Modified, Converter={StaticResource Date}, ConverterParameter=d}" Width="110" IsReadOnly="True" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</UserControl>

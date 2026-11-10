@@ -1,0 +1,200 @@
+<ui:FluentWindow x:Class="Headroom.App.Views.MainWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                 xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+                 xmlns:vm="clr-namespace:Headroom.App.ViewModels"
+                 xmlns:views="clr-namespace:Headroom.App.Views"
+                 mc:Ignorable="d"
+                 d:DataContext="{d:DesignInstance vm:MainViewModel}"
+                 Title="Headroom"
+                 Width="1320" Height="860" MinWidth="1000" MinHeight="640"
+                 WindowStartupLocation="CenterScreen"
+                 ExtendsContentIntoTitleBar="True"
+                 WindowCornerPreference="Round"
+                 Icon="pack://application:,,,/Assets/headroom.ico">
+
+    <Window.Resources>
+        <DataTemplate DataType="{x:Type vm:HomeViewModel}">
+            <views:HomeView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:ScanProgressViewModel}">
+            <views:ScanProgressView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:OverviewViewModel}">
+            <views:OverviewView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:TreemapViewModel}">
+            <views:TreemapView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:FolderTreeViewModel}">
+            <views:FolderTreeView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:LargestFilesViewModel}">
+            <views:LargestFilesView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:DuplicatesViewModel}">
+            <views:DuplicatesView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:CleanupViewModel}">
+            <views:CleanupView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:HealthViewModel}">
+            <views:HealthView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:RepairsViewModel}">
+            <views:RepairsView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:PerformanceViewModel}">
+            <views:PerformanceView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:ProgramsViewModel}">
+            <views:ProgramsView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:RegistryViewModel}">
+            <views:RegistryView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:HistoryViewModel}">
+            <views:HistoryView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
+            <views:SettingsView />
+        </DataTemplate>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Grid.Row="0" Title="Headroom — espaço em disco, limpeza e desempenho">
+            <ui:TitleBar.Icon>
+                <ui:ImageIcon Source="pack://application:,,,/Assets/headroom.png" />
+            </ui:TitleBar.Icon>
+        </ui:TitleBar>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="224" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Menu lateral -->
+            <DockPanel Grid.Column="0" Margin="8,4,4,8" LastChildFill="True">
+                <Border DockPanel.Dock="Bottom" Style="{StaticResource CardBorder}" Padding="12" Margin="4,8,4,0">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="Shield24" Margin="0,0,8,0"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                            <TextBlock Text="{Binding PrivilegeText}" Style="{StaticResource Caption}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                        <ui:Button Content="Reiniciar como administrador"
+                                   Margin="0,8,0,0" HorizontalAlignment="Stretch"
+                                   Command="{Binding RestartAsAdminCommand}"
+                                   Visibility="{Binding IsAdministrator, Converter={StaticResource BoolToVis}, ConverterParameter=inverse}" />
+                    </StackPanel>
+                </Border>
+
+                <ListBox ItemsSource="{Binding NavView}"
+                         SelectedItem="{Binding SelectedNavItem}"
+                         BorderThickness="0" Background="Transparent"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         AutomationProperties.Name="Menu de navegação">
+                    <ListBox.GroupStyle>
+                        <GroupStyle>
+                            <GroupStyle.HeaderTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}" Margin="12,12,0,4" FontSize="12"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                                </DataTemplate>
+                            </GroupStyle.HeaderTemplate>
+                        </GroupStyle>
+                    </ListBox.GroupStyle>
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                            <Setter Property="IsEnabled" Value="{Binding IsEnabled}" />
+                            <Setter Property="Padding" Value="10,8" />
+                            <Setter Property="Margin" Value="0,1" />
+                            <Setter Property="AutomationProperties.Name" Value="{Binding Title}" />
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:NavItem}">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon Symbol="{Binding Icon}" FontSize="18" Margin="0,0,12,0" />
+                                <TextBlock Text="{Binding Title}" VerticalAlignment="Center" FontSize="14" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+
+            <DockPanel Grid.Column="1" Margin="12,4,16,8">
+                <!-- Barra das telas de resultado: data da análise, "Nova análise" e troca de disco -->
+                <Border DockPanel.Dock="Top" Style="{StaticResource CardBorder}" Padding="12,6" Margin="4,0,4,12"
+                        Visibility="{Binding ShowResultBar, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                    <DockPanel>
+                        <ui:Button DockPanel.Dock="Right" Content="Nova análise" Icon="{ui:SymbolIcon ArrowClockwise24}"
+                                   Command="{Binding RescanCurrentCommand}" VerticalAlignment="Center" Margin="12,0,0,0"
+                                   ToolTip="Escaneia de novo só o disco/pasta exibido e atualiza a análise salva" />
+                        <ui:SymbolIcon DockPanel.Dock="Left" Symbol="History24" Margin="0,0,8,0" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        <Border DockPanel.Dock="Left" Style="{StaticResource Pill}" Margin="0,0,8,0" VerticalAlignment="Center"
+                                Visibility="{Binding ResultIsSaved, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="análise salva" FontSize="11" />
+                        </Border>
+                        <TextBlock Text="{Binding ResultInfoText}" Style="{StaticResource Caption}" VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" />
+                    </DockPanel>
+                    <DockPanel Margin="0,6,0,0" Visibility="{Binding Session.HasMultipleResults, Converter={StaticResource BoolToVis}}">
+                        <TextBlock DockPanel.Dock="Left" Text="Disco analisado:" Style="{StaticResource Caption}"
+                                   VerticalAlignment="Center" Margin="0,0,12,0" />
+                        <ListBox ItemsSource="{Binding Session.Results}" SelectedItem="{Binding Session.Result}"
+                                 BorderThickness="0" Background="Transparent"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 AutomationProperties.Name="Disco analisado">
+                            <ListBox.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ListBox.ItemsPanel>
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                                    <Setter Property="Padding" Value="10,4" />
+                                    <Setter Property="Margin" Value="0,0,6,0" />
+                                    <Setter Property="AutomationProperties.Name" Value="{Binding RootPath}" />
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <ui:SymbolIcon Symbol="HardDrive20" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding RootPath}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding TotalBytes, Converter={StaticResource Bytes}}" Margin="8,0,0,0"
+                                                   Style="{StaticResource Caption}" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Página atual -->
+                <ContentControl Content="{Binding CurrentPage}" Focusable="False" />
+            </DockPanel>
+        </Grid>
+
+        <!-- Barra de status -->
+        <Border Grid.Row="2" Padding="16,4" BorderThickness="0,1,0,0"
+                BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}">
+            <TextBlock Text="{Binding StatusText}" Style="{StaticResource Caption}" TextTrimming="CharacterEllipsis" />
+        </Border>
+    </Grid>
+</ui:FluentWindow>
