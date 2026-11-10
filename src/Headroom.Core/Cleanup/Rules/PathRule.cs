@@ -255,103 +255,12 @@ public class PathRule : CleanupRuleBase
 
     /// <summary>
     /// Coleta os itens de uma pasta. Se TUDO dentro de uma subpasta passa nos filtros, a subpasta inteira
-    /// vira um único item; senão, só os arquivos que passam são listados.
+    /// vira um único item; senão, só os arquivos que passam são listados (percurso paralelo em <see cref="ContentWalker"/>).
     /// </summary>
-    private ContentResult CollectContents(string directory, PathTarget target, CancellationToken ct)
-    {
-        var items = new List<CleanupItem>();
-        bool allMatch = true;
-        long size = 0;
-        int files = 0;
-        DateTime newest = DateTime.MinValue;
-        DateTime cutoff = DateTime.Now.AddDays(-target.MinAgeDays);
+    private static ContentWalker.ContentResult CollectContents(string directory, PathTarget target, CancellationToken ct) =>
+        ContentWalker.Collect(directory, target, ct);
 
-        foreach (var entry in SafeEntries(directory))
-        {
-            ct.ThrowIfCancellationRequested();
-            if ((entry.Attributes & FileAttributes.ReparsePoint) != 0)
-            {
-                allMatch = false; // links nunca são incluídos nem seguidos
-                continue;
-            }
-
-            if (entry is DirectoryInfo dir)
-            {
-                if (!target.Recursive || IsExcluded(dir.Name, target))
-                {
-                    allMatch = false;
-                    continue;
-                }
-
-                var sub = CollectContents(dir.FullName, target, ct);
-                if (sub.Files == 0 && target.MinAgeDays > 0 && dir.LastWriteTime > cutoff)
-                {
-                    // Pasta vazia criada há pouco (pode estar em uso por um instalador): fica.
-                    allMatch = false;
-                    continue;
-                }
-
-                if (sub.AllMatch)
-                {
-                    items.Add(new CleanupItem(dir.FullName, sub.Size, true, sub.Newest == DateTime.MinValue ? dir.LastWriteTime : sub.Newest, sub.Files));
-                }
-                else
-                {
-                    allMatch = false;
-                    items.AddRange(sub.Items);
-                }
-
-                size += sub.Size;
-                files += sub.Files;
-                if (sub.Newest > newest)
-                {
-                    newest = sub.Newest;
-                }
-
-                continue;
-            }
-
-            var file = (FileInfo)entry;
-            if (!FileMatches(file, target, cutoff))
-            {
-                allMatch = false;
-                continue;
-            }
-
-            items.Add(new CleanupItem(file.FullName, file.Length, false, file.LastWriteTime));
-            size += file.Length;
-            files++;
-            if (file.LastWriteTime > newest)
-            {
-                newest = file.LastWriteTime;
-            }
-        }
-
-        return new ContentResult(allMatch, size, files, newest, items);
-    }
-
-    private static bool FileMatches(FileInfo file, PathTarget target, DateTime cutoff)
-    {
-        if (!PathExpander.MatchesWildcard(file.Name, target.Pattern) || IsExcluded(file.Name, target))
-        {
-            return false;
-        }
-
-        if (target.Extensions is { Count: > 0 } exts &&
-            !exts.Any(e => file.Name.EndsWith(e.StartsWith('.') ? e : "." + e, StringComparison.OrdinalIgnoreCase)))
-        {
-            return false;
-        }
-
-        if (target.MinAgeDays > 0 && file.LastWriteTime > cutoff)
-        {
-            return false;
-        }
-
-        return file.Length >= target.MinSize;
-    }
-
-    private static bool IsExcluded(string name, PathTarget target) =>
+    internal static bool IsExcluded(string name, PathTarget target) =>
         target.Exclude is { Count: > 0 } excludes && excludes.Any(x => PathExpander.MatchesWildcard(name, x));
 
     private static CleanupItem? DescribeSelf(string path, PathTarget target, CancellationToken ct)
@@ -400,38 +309,9 @@ public class PathRule : CleanupRuleBase
         return null;
     }
 
-    /// <summary>Tamanho, arquivos e data mais recente de uma pasta (sem seguir links).</summary>
-    public static (long Size, int Files, DateTime Newest) MeasureDirectory(string path, CancellationToken ct)
-    {
-        long size = 0;
-        int files = 0;
-        DateTime newest = DateTime.MinValue;
-        var options = new EnumerationOptions
-        {
-            RecurseSubdirectories = true,
-            IgnoreInaccessible = true,
-            AttributesToSkip = FileAttributes.ReparsePoint,
-        };
-
-        try
-        {
-            foreach (var file in new DirectoryInfo(path).EnumerateFiles("*", options))
-            {
-                ct.ThrowIfCancellationRequested();
-                size += file.Length;
-                files++;
-                if (file.LastWriteTime > newest)
-                {
-                    newest = file.LastWriteTime;
-                }
-            }
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-        }
-
-        return (size, files, newest);
-    }
+    /// <summary>Tamanho, arquivos e data mais recente de uma pasta (sem seguir links; percurso paralelo).</summary>
+    public static (long Size, int Files, DateTime Newest) MeasureDirectory(string path, CancellationToken ct) =>
+        ContentWalker.Measure(path, ct);
 
     private static IEnumerable<FileSystemInfo> SafeEntries(string directory)
     {
@@ -449,6 +329,4 @@ public class PathRule : CleanupRuleBase
             return Array.Empty<FileSystemInfo>();
         }
     }
-
-    private sealed record ContentResult(bool AllMatch, long Size, int Files, DateTime Newest, List<CleanupItem> Items);
 }

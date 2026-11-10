@@ -389,9 +389,11 @@ public sealed partial class CleanupViewModel : ObservableObject, IPageActivated
         }
 
         var byRule = rules.ToDictionary(r => r.Rule);
+        // Mostra as regras que ainda estão rodando (não a última que reportou, que pode já ter terminado).
+        var running = new AnalysisProgressTracker();
         var progress = new Progress<CleanupProgress>(p =>
         {
-            ProgressText = $"Analisando: {p.RuleName}";
+            ProgressText = running.Update(p);
             ProgressValue = p.Fraction;
         });
 

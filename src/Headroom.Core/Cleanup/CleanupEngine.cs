@@ -61,12 +61,55 @@ public sealed class CleanupSummary
 }
 
 /// <summary>
+/// Texto de progresso da análise: mostra as regras que começaram e ainda não terminaram (a mais antiga
+/// primeiro). Antes a interface mostrava a última regra que reportou, inclusive ao terminar, e uma regra já
+/// concluída ficava no rótulo enquanto outra, mais lenta, seguia rodando.
+/// </summary>
+public sealed class AnalysisProgressTracker
+{
+    private readonly List<string> _running = new();
+
+    public IReadOnlyList<string> Running => _running;
+
+    public string Text => _running.Count switch
+    {
+        0 => CleanupEngine.AnalyzingDetail,
+        1 => $"Analisando: {_running[0]}",
+        _ => $"Analisando: {_running[0]} (+{_running.Count - 1})",
+    };
+
+    /// <summary>Registra um evento de <see cref="CleanupEngine.AnalyzeAsync"/> e devolve o texto atualizado.</summary>
+    public string Update(CleanupProgress progress)
+    {
+        if (progress.Detail == CleanupEngine.AnalyzedDetail)
+        {
+            _running.Remove(progress.RuleName);
+        }
+        else if (progress.Detail == CleanupEngine.AnalyzingDetail)
+        {
+            _running.Add(progress.RuleName);
+        }
+
+        return Text;
+    }
+}
+
+/// <summary>
 /// Orquestra análise e limpeza: analisa várias regras em paralelo, depois limpa em ordem segura
 /// (Lixeira primeiro, depois Seguro → Revisar → Avançado), cria ponto de restauração antes de itens
 /// avançados, trata programas abertos, grava log e consolida o resumo.
 /// </summary>
 public sealed class CleanupEngine
 {
+    /// <summary>Detalhe do progresso quando uma regra começa a ser analisada.</summary>
+    public const string AnalyzingDetail = "Analisando…";
+
+    /// <summary>
+    /// Detalhe do progresso quando a análise de uma regra termina. A interface não deve mostrar essa regra
+    /// como "em análise": as que continuam rodando são as que começaram e ainda não terminaram.
+    /// </summary>
+    public const string AnalyzedDetail = "Concluído";
+
     private readonly CleanupContext _context;
 
     public CleanupEngine(CleanupContext context)
@@ -88,7 +131,7 @@ public sealed class CleanupEngine
             await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                progress?.Report(new CleanupProgress(rule.Name, "Analisando…", done / (double)Math.Max(1, list.Count)));
+                progress?.Report(new CleanupProgress(rule.Name, AnalyzingDetail, done / (double)Math.Max(1, list.Count)));
                 results[index] = await rule.AnalyzeAsync(_context, cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
@@ -102,7 +145,7 @@ public sealed class CleanupEngine
             finally
             {
                 int finished = Interlocked.Increment(ref done);
-                progress?.Report(new CleanupProgress(rule.Name, "Concluído", finished / (double)Math.Max(1, list.Count)));
+                progress?.Report(new CleanupProgress(rule.Name, AnalyzedDetail, finished / (double)Math.Max(1, list.Count)));
                 if (results[index] is { } analysis)
                 {
                     completed?.Report(analysis);
